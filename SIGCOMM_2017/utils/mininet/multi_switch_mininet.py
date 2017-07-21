@@ -112,7 +112,8 @@ def main():
 
 
     links = [l[:2] for l in conf['links']]
-    latencies = dict([(''.join(sorted(l[:2])), l[2]) for l in conf['links'] if len(l)==3])
+    latencies = dict([(''.join(sorted(l[:2])), l[2]) for l in conf['links'] if len(l)>=3])
+    bws = dict([(''.join(sorted(l[:2])), l[3]) for l in conf['links'] if len(l)>=4])
 
     for host_name in sorted(conf['hosts'].keys()):
         host = conf['hosts'][host_name]
@@ -132,7 +133,7 @@ def main():
     pcap_dump = args.pcap_dump or ('pcap_dump' in conf and conf['pcap_dump'])
 
     topo = AppTopo(links, latencies, manifest=manifest, target=args.target,
-                  log_dir=args.log_dir)
+                  log_dir=args.log_dir, bws=bws)
     switchClass = configureP4Switch(
             sw_path=args.behavioral_exe,
             json_path=args.json,
