@@ -6,7 +6,7 @@
 
 # Compiled JSON
 *.json
-!*/p4app.json
+!*p4app.json
 
 *.pcap
 
