@@ -1,5 +1,5 @@
 {
-    "program": "mri.p4",
+    "program": "ecn.p4",
     "language": "p4-16",
     "targets": {
       "multiswitch": {
