@@ -44,7 +44,7 @@ def main():
     print "sending on interface %s to %s" % (iface, str(addr))
     pkt =  Ether(src=get_if_hwaddr(iface), dst='ff:ff:ff:ff:ff:ff') / SourceRoute(bos=0, port=2) / SourceRoute(bos=1, port=1)/ SourceRoutingTail(etherType=0x800) / IP(dst=addr) / UDP(dport=4321, sport=1234)
     pkt.show2()
-  #  sendp(pkt, iface=iface, verbose=False)
+    sendp(pkt, iface=iface, verbose=False)
 
 
 if __name__ == '__main__':

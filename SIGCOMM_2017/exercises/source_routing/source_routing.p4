@@ -3,7 +3,7 @@
 #include <v1model.p4>
 
 const bit<16> TYPE_IPV4 = 0x800;
-const bit<16> TYPE_SRCROUTING = 0x900;
+const bit<16> TYPE_SRCROUTING = 0x1234;
 
 /*************************************************************************
 *********************** H E A D E R S  ***********************************
