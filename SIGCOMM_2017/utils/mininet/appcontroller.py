@@ -95,7 +95,8 @@ class AppController:
             print
             print "Configuring switch... %s" % sw_name
             sw = self.net.get(sw_name)
-            self.add_entries(sw=sw, entries=entries[sw_name])
+            if entries[sw_name]:
+                self.add_entries(sw=sw, entries=entries[sw_name])
         print "Configuration complete."
         print "**********"
 

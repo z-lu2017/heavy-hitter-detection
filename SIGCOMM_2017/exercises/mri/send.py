@@ -47,8 +47,8 @@ def main():
     addr = socket.gethostbyname(sys.argv[1])
     iface = get_if()
 
-    pkt = Ether(src=get_if_hwaddr(iface), dst="ff:ff:ff:ff:ff:ff") / IP(dst=addr) / UDP(dport=4321, sport=1234) / sys.argv[2]
-    #pkt = Ether(src=get_if_hwaddr(iface), dst="ff:ff:ff:ff:ff:ff") / IP(dst=addr, options = IPOption_MRI(count=2, swids=[3,4])) / UDP(dport=4321, sport=1234) / sys.argv[2]
+#    pkt = Ether(src=get_if_hwaddr(iface), dst="ff:ff:ff:ff:ff:ff") / IP(dst=addr) / UDP(dport=4321, sport=1234) / sys.argv[2]
+    pkt = Ether(src=get_if_hwaddr(iface), dst="ff:ff:ff:ff:ff:ff") / IP(dst=addr, options = IPOption_MRI(count=2, swids=[3,4])) / UDP(dport=4321, sport=1234) / sys.argv[2]
     pkt.show2()
     #hexdump(pkt)
     sendp(pkt, iface=iface)

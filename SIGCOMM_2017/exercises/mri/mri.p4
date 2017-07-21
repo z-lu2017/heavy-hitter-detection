@@ -6,7 +6,6 @@ const bit<8>  UDP_PROTOCOL = 0x11;
 const bit<16> TYPE_IPV4 = 0x800;
 const bit<5>  IPV4_OPTION_MRI = 31;
 
-
 #define MAX_HOPS 9
 
 /*************************************************************************
@@ -17,6 +16,7 @@ typedef bit<9>  egressSpec_t;
 typedef bit<48> macAddr_t;
 typedef bit<32> ip4Addr_t;
 typedef bit<32> switchID_t;
+typedef bit<24> qLen_t;
 
 header ethernet_t {
     macAddr_t dstAddr;
@@ -101,48 +101,37 @@ inout standard_metadata_t standard_metadata) {
     state parse_ipv4 {
         packet.extract(hdr.ipv4);
         verify(hdr.ipv4.ihl >= 5, error.IPHeaderTooShort);
-        /*
-        * TODO: Modify the next line to select on the value of hdr.ipv4.ihl.
-        * If the value of hdr.ipv4.ihl is set to 5, accept. 
-        * Otherwise, transition to  parse_ipv4_option.
-        */
-        transition accept;
+        transition select(hdr.ipv4.ihl) {
+            5             : accept;
+            default       : parse_ipv4_option;
+        }
     }
 
-    /* TODO: Implement the logic for parse_ipv4_options, parse_mri, and parse_swid */
-
-
     state parse_ipv4_option {
-        /*
-        * TODO: Add logic to:
-        * - Extract the ipv4_option header.
-        *   - If the value is equal to IPV4_OPTION_MRI, transition to parse_mri.
-        *   - Otherwise, accept.
-        */
+        packet.extract(hdr.ipv4_option);
+        transition select(hdr.ipv4_option.option) {
+            IPV4_OPTION_MRI: parse_mri;
+            default: accept;
+        }
     }
 
     state parse_mri {
-        /*
-        * TODO: Add logic to:
-        * - Extract hdr.mri.
-        * - Set meta.parser_metadata.remaining to hdr.mri.count
-        * - Select on the value of meta.parser_metadata.remaining
-        *   - If the value is equal to 0, accept.
-        *   - Otherwise, transition to parse_swid.
-        */
+        packet.extract(hdr.mri);
+        meta.parser_metadata.remaining = hdr.mri.count;
+        transition select(meta.parser_metadata.remaining) {
+            0 : accept;
+            default: parse_swid;
+        }
     }
 
     state parse_swid {
-        /*
-        * TODO: Add logic to:
-        * - Extract hdr.swids.next.
-        * - Decrement meta.parser_metadata.remaining by 1
-        * - Select on the value of meta.parser_metadata.remaining
-        *   - If the value is equal to 0, accept.
-        *   - Otherwise, transition to parse_swid.
-        */
+        packet.extract(hdr.swids.next);
+        meta.parser_metadata.remaining = meta.parser_metadata.remaining  - 1;
+        transition select(meta.parser_metadata.remaining) {
+            0 : accept;
+            default: parse_swid;
+        }
     }    
-
 }
 
 
@@ -164,32 +153,7 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
         mark_to_drop();
     }
     
-    action add_mri_option() {
-        /*
-        * TODO: add logic to:
-        * - Call setValid() on hdr.ipv4_option, which will add the header if it is not 
-        *    there, or leave the packet unchanged.
-        * - Set hdr.ipv4_option.copyFlag to 1
-        * - Set hdr.ipv4_option.optClass to 2
-        * - Set hdr.ipv4_option.option to IPV4_OPTION_MRI
-        * - Set the hdr.ipv4_option.optionLength to 4 
-        * - Call setValid() on hdr.mri
-        * - Set hdr.mri.count to 0
-        * - Increment hdr.ipv4.ihl by 1
-        */
-    }
     
-    action add_swid(switchID_t id) {    
-
-        /*
-        * TODO: add logic to:
-        - Increment hdr.mri.count by 1
-        - Add a new swid header by calling push_front(1) on hdr.swids.
-        - Set hdr.swids[0].swid to the id paremeter
-        - Incremement hdr.ipv4.ihl by 1
-        - Incrememtn hdr.ipv4_option.optionLength by 4
-        */
-    }
     
     action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
         standard_metadata.egress_spec = port;
@@ -198,15 +162,6 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
         hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
 
-    table swid {
-        actions =
-        {
-            /* TODO: repace NoAction with the correct action */
-            NoAction;
-        }
-        /* TODO: set a default action. */
-    }
-    
     table ipv4_lpm {
         key = {
             hdr.ipv4.dstAddr: lpm;
@@ -221,16 +176,9 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
     }
     
     apply {
-
-         ipv4_lpm.apply();
-
-        /*
-        * TODO: add logic to:
-        * - If hdr.ipv4 is valid:
-        *     - Apply table ipv4_lpm
-        *     - If hdr.mri is not valid, call add_mri_option()
-        *     - Apply table swid
-        */
+        if (hdr.ipv4.isValid()) {
+            ipv4_lpm.apply();
+        }
     }
 }
 
@@ -239,7 +187,39 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
 *************************************************************************/
 
 control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
-    apply {  }
+    action add_mri_option() {
+        hdr.ipv4_option.setValid();
+        hdr.ipv4_option.copyFlag     = 1;
+        hdr.ipv4_option.optClass     = 2;  /* Debugging and Measurement */
+        hdr.ipv4_option.option       = IPV4_OPTION_MRI;
+        hdr.ipv4_option.optionLength = 4;  /* sizeof(ipv4_option) + sizeof(mri) */
+        
+        hdr.mri.setValid();
+        hdr.mri.count = 0;
+        hdr.ipv4.ihl = hdr.ipv4.ihl + 1;
+    }
+    action add_swid(in bit<19> depth) {    
+        hdr.mri.count = hdr.mri.count + 1;
+        hdr.swids.push_front(1);
+        hdr.swids[0].swid = (bit<32>)depth;
+
+        hdr.ipv4.ihl = hdr.ipv4.ihl + 1;
+        hdr.ipv4_option.optionLength = hdr.ipv4_option.optionLength + 4;    
+    }
+    table swid {
+        actions        = { 
+		add_swid(standard_metadata.deq_qdepth); 
+		NoAction; }
+        default_action =  NoAction();      
+    }
+    
+    apply {
+    if (!hdr.mri.isValid()) {
+    //    add_mri_option();
+    } else{  
+	swid.apply();
+    }
+    }
 }
 
 /*************************************************************************
@@ -248,14 +228,29 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
 
 
 control computeChecksum(
-    inout headers  hdr,
-    inout metadata meta)
+inout headers  hdr,
+inout metadata meta)
 {
-    /* 
-    * Ignore checksum for now. The reference solution contains a checksum
-    * implementation. 
-    */
-    apply {  }
+    Checksum16() ipv4_checksum;
+    
+    apply {
+        if (hdr.ipv4.isValid()) {
+            hdr.ipv4.hdrChecksum = ipv4_checksum.get(
+            {    
+                hdr.ipv4.version,
+                hdr.ipv4.ihl,
+                hdr.ipv4.diffserv,
+                hdr.ipv4.totalLen,
+                hdr.ipv4.identification,
+                hdr.ipv4.flags,
+                hdr.ipv4.fragOffset,
+                hdr.ipv4.ttl,
+                hdr.ipv4.protocol,
+                hdr.ipv4.srcAddr,
+                hdr.ipv4.dstAddr
+            });
+        }
+    }
 }
 
 /*************************************************************************
