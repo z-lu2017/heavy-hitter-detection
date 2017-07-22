@@ -16,7 +16,7 @@ typedef bit<9>  egressSpec_t;
 typedef bit<48> macAddr_t;
 typedef bit<32> ip4Addr_t;
 typedef bit<32> switchID_t;
-typedef bit<24> qLen_t;
+typedef bit<32> qDepth_t;
 
 header ethernet_t {
     macAddr_t dstAddr;
@@ -52,6 +52,7 @@ header mri_t {
 
 header switch_t {
     switchID_t  swid;
+    qDepth_t    qdepth;
 }
 
 struct ingress_metadata_t {
@@ -72,7 +73,7 @@ struct headers {
     ipv4_t       ipv4;
     ipv4_option_t  ipv4_option;
     mri_t        mri;
-    switch_t[MAX_HOPS] swids;
+    switch_t[MAX_HOPS] swtraces;
 }
 
 error { IPHeaderTooShort }
@@ -120,16 +121,16 @@ inout standard_metadata_t standard_metadata) {
         meta.parser_metadata.remaining = hdr.mri.count;
         transition select(meta.parser_metadata.remaining) {
             0 : accept;
-            default: parse_swid;
+            default: parse_swtrace;
         }
     }
 
-    state parse_swid {
-        packet.extract(hdr.swids.next);
+    state parse_swtrace {
+        packet.extract(hdr.swtraces.next);
         meta.parser_metadata.remaining = meta.parser_metadata.remaining  - 1;
         transition select(meta.parser_metadata.remaining) {
             0 : accept;
-            default: parse_swid;
+            default: parse_swtrace;
         }
     }    
 }
@@ -198,27 +199,29 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
         hdr.mri.count = 0;
         hdr.ipv4.ihl = hdr.ipv4.ihl + 1;
     }
-    action add_swid(in bit<19> depth) {    
+    action add_swtrace(switchID_t swid) { 
         hdr.mri.count = hdr.mri.count + 1;
-        hdr.swids.push_front(1);
-        hdr.swids[0].swid = (bit<32>)depth;
+        hdr.swtraces.push_front(1);
+        hdr.swtraces[0].swid = swid;
+        hdr.swtraces[0].qdepth = (qDepth_t)standard_metadata.deq_qdepth;
 
-        hdr.ipv4.ihl = hdr.ipv4.ihl + 1;
-        hdr.ipv4_option.optionLength = hdr.ipv4_option.optionLength + 4;    
+        hdr.ipv4.ihl = hdr.ipv4.ihl + 2;
+        hdr.ipv4_option.optionLength = hdr.ipv4_option.optionLength + 8; 
     }
-    table swid {
+    table swtrace {
         actions        = { 
-		add_swid(standard_metadata.deq_qdepth); 
-		NoAction; }
+		    add_swtrace; 
+		    NoAction; 
+        }
         default_action =  NoAction();      
     }
     
     apply {
-    if (!hdr.mri.isValid()) {
-    //    add_mri_option();
-    } else{  
-	swid.apply();
-    }
+        if (hdr.mri.isValid()) {
+            swtrace.apply();
+       /* } else{  
+            add_mri_option();*/
+        }
     }
 }
 
@@ -263,7 +266,7 @@ control DeparserImpl(packet_out packet, in headers hdr) {
         packet.emit(hdr.ipv4);
         packet.emit(hdr.ipv4_option);
         packet.emit(hdr.mri);
-        packet.emit(hdr.swids);                 
+        packet.emit(hdr.swtraces);                 
     }
 }
 

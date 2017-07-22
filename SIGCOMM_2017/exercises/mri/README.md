@@ -1,3 +1,10 @@
+h22 iperf -s -u > h22.log &
+h2 ./receive.py > h2.log &
+h1 ./send.py h2 x 30 > h1.log &
+h11 iperf -c h22 -t 15 -u > h11.log &
+
+then check build/h2.log
+
 # Implementing MRI
 
 ## Introduction
