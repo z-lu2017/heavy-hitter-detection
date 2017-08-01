@@ -5,14 +5,6 @@
 const bit<8>  TCP_PROTOCOL = 0x06;
 const bit<16> TYPE_IPV4 = 0x800;
 
-/*extern Register<T> {
-    Register(bit<32> size);
-    void read(in bit<32> index, out T value);
-    void write(in bit<32> index, in T value);
-}*/
-
-#define MAX_HOPS 9
-
 /*************************************************************************
 *********************** H E A D E R S  ***********************************
 *************************************************************************/
@@ -50,8 +42,6 @@ struct headers {
     ethernet_t   ethernet;
     ipv4_t       ipv4;
 }
-
-error { IPHeaderTooShort }
 
 /*************************************************************************
 *********************** P A R S E R  ***********************************
@@ -152,30 +142,10 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
 
 
 control computeChecksum(
-inout headers  hdr,
-inout metadata meta)
+    inout headers  hdr,
+    inout metadata meta)
 {
-    Checksum16() ipv4_checksum;
-    
-    apply {
-        if (hdr.ipv4.isValid()) {
-            hdr.ipv4.hdrChecksum = ipv4_checksum.get(
-            {    
-                hdr.ipv4.version,
-                hdr.ipv4.ihl,
-                hdr.ipv4.diffserv,
-                hdr.ipv4.ecn,
-                hdr.ipv4.totalLen,
-                hdr.ipv4.identification,
-                hdr.ipv4.flags,
-                hdr.ipv4.fragOffset,
-                hdr.ipv4.ttl,
-                hdr.ipv4.protocol,
-                hdr.ipv4.srcAddr,
-                hdr.ipv4.dstAddr
-            });
-        }
-    }
+    apply { }
 }
 
 /*************************************************************************
