@@ -5,12 +5,15 @@
 const bit<16> TYPE_IPV4 = 0x800;
 const bit<16> TYPE_SRCROUTING = 0x1234;
 
+#define MAX_HOPS 9
+
 /*************************************************************************
 *********************** H E A D E R S  ***********************************
 *************************************************************************/
 
 typedef bit<9>  egressSpec_t;
 typedef bit<48> macAddr_t;
+typedef bit<32> ip4Addr_t;
 
 header ethernet_t {
     macAddr_t dstAddr;
@@ -27,14 +30,30 @@ header srcRoutingTail_t {
     bit<16>   etherType;
 }
 
+header ipv4_t {
+    bit<4>    version;
+    bit<4>    ihl;
+    bit<8>    diffserv;
+    bit<16>   totalLen;
+    bit<16>   identification;
+    bit<3>    flags;
+    bit<13>   fragOffset;
+    bit<8>    ttl;
+    bit<8>    protocol;
+    bit<16>   hdrChecksum;
+    ip4Addr_t srcAddr;
+    ip4Addr_t dstAddr;
+}
+
 struct metadata {
     /* empty */
 }
 
 struct headers {
-    ethernet_t   ethernet;
-    srcRoute_t   srcRoute;
-    srcRoutingTail_t srcRoutingTail;
+    ethernet_t              ethernet;
+    srcRoute_t[MAX_HOPS]    srcRoutes;
+    srcRoutingTail_t        srcRoutingTail;
+    ipv4_t                  ipv4;
 }
 
 /*************************************************************************
@@ -60,15 +79,23 @@ parser ParserImpl(packet_in packet,
     }
 
     state parse_srcRouting {
-        packet.extract(hdr.srcRoute);
-        transition select(hdr.srcRoute.bos) {
+        packet.extract(hdr.srcRoutes.next);
+        transition select(hdr.srcRoutes.last.bos) {
             1: parse_srcRoutingTail;
-            default: accept;
+            default: parse_srcRouting;
         }
     }
 
     state parse_srcRoutingTail {
         packet.extract(hdr.srcRoutingTail);
+        transition select(hdr.srcRoutingTail.etherType) {
+            TYPE_IPV4: parse_ipv4;
+            default: accept;
+        }
+    }
+
+    state parse_ipv4 {
+        packet.extract(hdr.ipv4);
         transition accept;
     }
 
@@ -96,21 +123,28 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
     }
     
     action srcRoute_nhop() {
-        standard_metadata.egress_spec = (bit<9>)hdr.srcRoute.port;
-       // hdr.srcRoute.setInValid();
+        standard_metadata.egress_spec = (bit<9>)hdr.srcRoutes[0].port;
+        hdr.srcRoutes.pop_front(1);
     }
 
     action srcRoute_finish() {
         hdr.ethernet.etherType = hdr.srcRoutingTail.etherType;
-        //hdr.srcRoutingTail.setInValid();
+        hdr.srcRoutingTail.setInvalid();
+    }
+
+    action update_ttl(){
+        hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
     
     apply {
-        if (hdr.srcRoute.isValid()){
-            if (hdr.srcRoute.bos == 1){
+        if (hdr.srcRoutes[0].isValid()){
+            if (hdr.srcRoutes[0].bos == 1){
                 srcRoute_finish();
             }
             srcRoute_nhop();
+            if (hdr.ipv4.isValid()){
+                update_ttl();
+            }
         }else{
             drop();
         } 
@@ -144,6 +178,9 @@ control computeChecksum(
 control DeparserImpl(packet_out packet, in headers hdr) {
     apply {
         packet.emit(hdr.ethernet);
+        packet.emit(hdr.srcRoutes);
+        packet.emit(hdr.srcRoutingTail);
+        packet.emit(hdr.ipv4);
     }
 }
 

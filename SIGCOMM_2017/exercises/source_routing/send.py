@@ -31,6 +31,7 @@ class SourceRoutingTail(Packet):
 bind_layers(Ether, SourceRoute, type=0x1234)
 bind_layers(SourceRoute, SourceRoute, bos=0)
 bind_layers(SourceRoute, SourceRoutingTail, bos=1)
+bind_layers(SourceRoutingTail, IP, etherType=0x800)
 
 def main():
 
@@ -42,7 +43,12 @@ def main():
     iface = get_if()
 
     print "sending on interface %s to %s" % (iface, str(addr))
-    pkt =  Ether(src=get_if_hwaddr(iface), dst='ff:ff:ff:ff:ff:ff') / SourceRoute(bos=0, port=2) / SourceRoute(bos=1, port=1)/ SourceRoutingTail(etherType=0x800) / IP(dst=addr) / UDP(dport=4321, sport=1234)
+    pkt =  Ether(src=get_if_hwaddr(iface), dst='ff:ff:ff:ff:ff:ff');
+    pkt = pkt / SourceRoute(bos=0, port=2) / SourceRoute(bos=0, port=3);
+    pkt = pkt / SourceRoute(bos=0, port=2) / SourceRoute(bos=0, port=2);
+    pkt = pkt / SourceRoute(bos=1, port=1)
+    pkt = pkt / SourceRoutingTail(etherType=0x800) / IP(dst=addr) / UDP(dport=4321, sport=1234)
+#    pkt =  Ether(src=get_if_hwaddr(iface), dst='ff:ff:ff:ff:ff:ff') / IP(dst=addr) / UDP(dport=4321, sport=1234)
     pkt.show2()
     sendp(pkt, iface=iface, verbose=False)
 
