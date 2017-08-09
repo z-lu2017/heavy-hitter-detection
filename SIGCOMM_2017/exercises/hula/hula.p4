@@ -156,7 +156,12 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
        bit<16> tmp;
        dstindex_nhop_reg.read(tmp, index); 
        standard_metadata.egress_spec = (bit<9>)tmp;
-       update_ttl(); 
+    }
+
+    action set_dmac(macAddr_t dstAddr){
+        hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
+        hdr.ethernet.dstAddr = dstAddr;
+        update_ttl(); 
     }
 
     /* hula_dst if dstAddr = this switch
@@ -213,6 +218,18 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
         size = TOR_NUM;
     }
 
+    table dmac {
+        key = {
+            standard_metadata.egress_spec : exact;
+        }
+        actions = {
+            set_dmac;
+            nop;
+        }
+        default_action = nop;
+        size = 16;
+    }
+
     
     apply {
         if (hdr.hula.isValid()){
@@ -251,6 +268,7 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
         }else if (hdr.ipv4.isValid()){
             /* look into hula table */
             hula_nhop.apply();
+            dmac.apply();
         }else {
             drop();
         }

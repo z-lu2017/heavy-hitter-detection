@@ -61,7 +61,7 @@ class AppController:
                 #entries[sw].append('table_add ipv4_lpm set_nhop %s/32 => %s %d' % (link['host_ip'], link['host_ip'], link['sw_port']))
                 iface = h.intfNames()[link['idx']]
                 # use mininet to set ip and mac to let it know the change
-                h.setIP(link['host_ip'], 16)
+                h.setIP(link['host_ip'], 24)
                 h.setMAC(link['host_mac'])
                 #h.cmd('ifconfig %s %s hw ether %s' % (iface, link['host_ip'], link['host_mac']))
                 h.cmd('arp -i %s -s %s %s' % (iface, link['sw_ip'], link['sw_mac']))
