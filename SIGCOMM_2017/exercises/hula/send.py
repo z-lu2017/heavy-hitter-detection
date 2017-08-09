@@ -11,6 +11,8 @@ from scapy.all import Ether, IP, UDP
 from scapy.fields import *
 from time import sleep
 
+period = 10
+
 class Hula(Packet):
    fields_desc = [ BitField("dir", 0, 1),
                    BitField("qdepth", 0, 15),
@@ -56,7 +58,7 @@ def main():
             pkt = pkt / IP(dst=e[1], src=e[0]) / UDP(dport=4321, sport=1234)
             pkt.show2()
             sendp(pkt, iface=e[3], verbose=False)
-          sleep(5)
+          sleep(period)
     except KeyboardInterrupt:
         raise
 
