@@ -51,15 +51,31 @@ header ipv4_t {
     ip4Addr_t dstAddr;
 }
 
+header tcp_t {
+    bit<16> srcPort;
+    bit<16> dstPort;
+    bit<32> seqNo;
+    bit<32> ackNo;
+    bit<4>  dataOffset;
+    bit<3>  res;
+    bit<3>  ecn;
+    bit<6>  ctrl;
+    bit<16> window;
+    bit<16> checksum;
+    bit<16> urgentPtr;
+}
+
 struct metadata {
-    /* empty */
     bit<32> index;
+    bit<16> hash;
+    qdepth_t old_qdepth;
 }
 
 struct headers {
     ethernet_t              ethernet;
     srcRoute_t[MAX_HOPS]    srcRoutes;
     ipv4_t                  ipv4;
+    tcp_t                   tcp;
     hula_t                  hula;
 }
 
@@ -101,6 +117,14 @@ parser ParserImpl(packet_in packet,
 
     state parse_ipv4 {
         packet.extract(hdr.ipv4);
+        transition select(hdr.ipv4.protocol) {
+            8w6: parse_tcp;
+            default: accept;
+        }
+    }
+
+    state parse_tcp {
+        packet.extract(hdr.tcp);
         transition accept;
     }
 
@@ -137,6 +161,7 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
 
     register<qdepth_t>(TOR_NUM) srcindex_qdepth_reg; 
     register<digest_t>(TOR_NUM) srcindex_digest_reg; 
+    register<bit<16>>(65536) flow_port_reg; 
 
     action hula_dst(bit<32> index) {
         /* pick min */
@@ -230,15 +255,25 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
         size = 16;
     }
 
+    table debug2{
+        key = {
+            hdr.hula.qdepth: exact;
+            meta.old_qdepth: exact;
+        }
+        actions = {
+            nop;
+        }
+        default_action = nop;
+        size = 1;
+    }
     
     apply {
         if (hdr.hula.isValid()){
             if (hdr.hula.dir == 0){
                 switch(hula_fwd.apply().action_run){
                     hula_dst: {
-                        qdepth_t old_qdepth;
-                        srcindex_qdepth_reg.read(old_qdepth, meta.index);
-                        if (old_qdepth > hdr.hula.qdepth){
+                        srcindex_qdepth_reg.read(meta.old_qdepth, meta.index);
+                        if (meta.old_qdepth > hdr.hula.qdepth){
                             srcindex_qdepth_reg.write(meta.index, hdr.hula.qdepth);
                             srcindex_digest_reg.write(meta.index, hdr.hula.digest);
 
@@ -254,6 +289,7 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
                             }
                             drop();
                         } 
+                        debug2.apply();
                     }
                 }
             }else {
@@ -266,8 +302,22 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
                 update_ttl();
             }
         }else if (hdr.ipv4.isValid()){
-            /* look into hula table */
-            hula_nhop.apply();
+            //hash<bit<16>, bit<16>, tuple<bit<32>, bit<32>, bit<16>>, bit<32>>(
+            hash(
+                meta.hash, 
+                HashAlgorithm.crc16, 
+                16w0, 
+                { hdr.ipv4.srcAddr, hdr.ipv4.dstAddr, hdr.tcp.srcPort}, 
+                32w65536);
+            /* look into hula tables */
+            bit<16> port;
+            flow_port_reg.read(port, (bit<32>)meta.hash);
+            if (port == 0){
+                hula_nhop.apply();
+                flow_port_reg.write((bit<32>)meta.hash, (bit<16>)standard_metadata.egress_spec);
+            }else{
+                standard_metadata.egress_spec = (bit<9>)port;
+            }
             dmac.apply();
         }else {
             drop();
@@ -283,15 +333,31 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
     action hula_max_qdepth(){
         hdr.hula.qdepth = (qdepth_t)standard_metadata.deq_qdepth;
     } 
+    action nop(){}
+
+    table debug{
+        key = {
+            hdr.hula.dir: exact;
+            hdr.hula.qdepth: exact;
+            standard_metadata.deq_qdepth: exact;
+        }
+        actions = {
+            nop;
+        }
+        default_action = nop;
+        size = 1;
+    }
 
     apply {
-        if (hdr.hula.isValid() &&
-            hdr.hula.dir == 0 &&
-            hdr.hula.qdepth < (qdepth_t)standard_metadata.deq_qdepth){
+        if (hdr.hula.isValid() && hdr.hula.dir == 0){
+            if (hdr.hula.qdepth < (qdepth_t)standard_metadata.deq_qdepth){
                 /* update queue length */
                 hula_max_qdepth();
-            }    
+            }else{
+            } 
+            debug.apply();
         }
+    }
 }
 
 /*************************************************************************
@@ -334,6 +400,7 @@ control DeparserImpl(packet_out packet, in headers hdr) {
         packet.emit(hdr.hula);
         packet.emit(hdr.srcRoutes);
         packet.emit(hdr.ipv4);
+        packet.emit(hdr.tcp);
     }
 }
 
