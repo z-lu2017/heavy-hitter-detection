@@ -16,7 +16,7 @@ typedef bit<9>  egressSpec_t;
 typedef bit<48> macAddr_t;
 typedef bit<32> ip4Addr_t;
 typedef bit<32> switchID_t;
-typedef bit<32> qDepth_t;
+typedef bit<32> qdepth_t;
 
 header ethernet_t {
     macAddr_t dstAddr;
@@ -52,7 +52,7 @@ header mri_t {
 
 header switch_t {
     switchID_t  swid;
-    qDepth_t    qdepth;
+    qdepth_t    qdepth;
 }
 
 struct ingress_metadata_t {
@@ -69,10 +69,10 @@ struct metadata {
 }
 
 struct headers {
-    ethernet_t   ethernet;
-    ipv4_t       ipv4;
-    ipv4_option_t  ipv4_option;
-    mri_t        mri;
+    ethernet_t         ethernet;
+    ipv4_t             ipv4;
+    ipv4_option_t      ipv4_option;
+    mri_t              mri;
     switch_t[MAX_HOPS] swtraces;
 }
 
@@ -154,8 +154,6 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
         mark_to_drop();
     }
     
-    
-    
     action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
         standard_metadata.egress_spec = port;
         hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
@@ -203,7 +201,7 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
         hdr.mri.count = hdr.mri.count + 1;
         hdr.swtraces.push_front(1);
         hdr.swtraces[0].swid = swid;
-        hdr.swtraces[0].qdepth = (qDepth_t)standard_metadata.deq_qdepth;
+        hdr.swtraces[0].qdepth = (qdepth_t)standard_metadata.deq_qdepth;
 
         hdr.ipv4.ihl = hdr.ipv4.ihl + 2;
         hdr.ipv4_option.optionLength = hdr.ipv4_option.optionLength + 8; 
