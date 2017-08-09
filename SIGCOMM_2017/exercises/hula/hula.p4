@@ -131,6 +131,7 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
     }
     
     action srcRoute_nhop() {
+        standard_metadata.egress_spec = (bit<9>)hdr.srcRoutes[0].port;
         hdr.srcRoutes.pop_front(1);
     }
 
@@ -194,9 +195,9 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
         }
         actions = {
             drop;
-            nop;
+            srcRoute_nhop;
         }
-        default_action = nop;
+        default_action = srcRoute_nhop;
         size = 2;
     }
 
@@ -225,6 +226,7 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
                             srcindex_digest_reg.write(meta.index, hdr.hula.digest);
 
                             /* return the packet */
+                            hdr.hula.dir = 1;
                             standard_metadata.egress_spec = standard_metadata.ingress_port;
                         }else{
                             /* update the oldpath if it has gone worse */
