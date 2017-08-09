@@ -26,10 +26,6 @@ header srcRoute_t {
     bit<15>   port;
 }
 
-header srcRoutingTail_t {
-    bit<16>   etherType;
-}
-
 header ipv4_t {
     bit<4>    version;
     bit<4>    ihl;
@@ -52,7 +48,6 @@ struct metadata {
 struct headers {
     ethernet_t              ethernet;
     srcRoute_t[MAX_HOPS]    srcRoutes;
-    srcRoutingTail_t        srcRoutingTail;
     ipv4_t                  ipv4;
 }
 
@@ -81,16 +76,8 @@ parser ParserImpl(packet_in packet,
     state parse_srcRouting {
         packet.extract(hdr.srcRoutes.next);
         transition select(hdr.srcRoutes.last.bos) {
-            1: parse_srcRoutingTail;
+            1: parse_ipv4;
             default: parse_srcRouting;
-        }
-    }
-
-    state parse_srcRoutingTail {
-        packet.extract(hdr.srcRoutingTail);
-        transition select(hdr.srcRoutingTail.etherType) {
-            TYPE_IPV4: parse_ipv4;
-            default: accept;
         }
     }
 
@@ -128,8 +115,7 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
     }
 
     action srcRoute_finish() {
-        hdr.ethernet.etherType = hdr.srcRoutingTail.etherType;
-        hdr.srcRoutingTail.setInvalid();
+        hdr.ethernet.etherType = TYPE_IPV4;
     }
 
     action update_ttl(){
@@ -179,7 +165,6 @@ control DeparserImpl(packet_out packet, in headers hdr) {
     apply {
         packet.emit(hdr.ethernet);
         packet.emit(hdr.srcRoutes);
-        packet.emit(hdr.srcRoutingTail);
         packet.emit(hdr.ipv4);
     }
 }
