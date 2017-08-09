@@ -1,3 +1,50 @@
+Run `h1 ping h2`
+It doesn't work as there is not route setup
+Run `s1 ./send.py`. This sends hula packets from each ToR to all other ToRs
+on all different paths (using sourceRouting). 
+Hula packets save the max queue depth along path.
+Destination ToR returns the packet to source ToR along the same path (Source Routing) 
+if the packet has lower queue depth from the source than previous packets from that source, 
+All switches that receive the hula packet in reverse path, setup the next hop to destination ToR.
+
+Now run `h1 ping h2`. It works.
+
+Run
+   ```bash
+h3 iperf -s -u > h3.log &
+h1 iperf -c h3 -t 30 -u -b 2m > h1.log &
+h2 iperf -c h3 -t 30 -u -b 1m > h2.log &
+   ```
+
+wait 30 seconds. Check build/h3.log. Although there are two paths from to h3 both h1 and h2 use the same path and aggregate bandwidth <= 1mbps
+
+exit and run `./run.sh` again
+
+Run
+   ```bash
+s1 ./send.py
+h3 iperf -s -u > h3.log &
+h1 iperf -c h3 -t 30 -u -b 2m > h1.log &
+   ```
+now run
+   ```bash
+s1 ./send.py
+   ```
+This lets the destination ToR (s3) now that the prevously chosen path is congested.
+Run it again so that it can learn the new path
+   ```bash
+s1 ./send.py
+   ```
+wait a few seconds so that the packet can go throught the queues. Alternatively, you can run `s1 ./send.py 2 &` to keep sending hula packets every 2 seconds in the background
+Now run:
+
+   ```bash
+h2 iperf -c h3 -t 20 -u -b 1m > h2.log &
+   ```
+
+Both flows should be able to send 1mbps
+
+
 # Implementing L3 Forwarding
 
 ## Introduction

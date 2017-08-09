@@ -87,8 +87,6 @@ parser ParserImpl(packet_in packet,
                   out headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
-
-    
     state start {
         transition parse_ethernet;
     }
@@ -218,7 +216,9 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
         size = TOR_NUM;
     }
 
-    /* hula_src if srcAddr = this switch */
+    /* drop if srcAddr = this switch 
+     * otherwise, just forward in the reverse path based on sourceRouting
+     */
     table hula_src {
         key = {
             hdr.ipv4.srcAddr: exact;
@@ -231,6 +231,9 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
         size = 2;
     }
 
+    /*
+     * get nexthop based on hula information saved in registers
+     */
     table hula_nhop {
         key = {
             hdr.ipv4.dstAddr: lpm;
@@ -243,6 +246,9 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
         size = TOR_NUM;
     }
 
+    /*
+     * set right dmac for packets going to hosts
+     */
     table dmac {
         key = {
             standard_metadata.egress_spec : exact;
@@ -255,33 +261,22 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
         size = 16;
     }
 
-    table debug2{
-        key = {
-            hdr.hula.qdepth: exact;
-            meta.old_qdepth: exact;
-        }
-        actions = {
-            nop;
-        }
-        default_action = nop;
-        size = 1;
-    }
-    
     apply {
         if (hdr.hula.isValid()){
             if (hdr.hula.dir == 0){
                 switch(hula_fwd.apply().action_run){
                     hula_dst: {
+                        /* if it is the destination ToR compare qdepth */
                         srcindex_qdepth_reg.read(meta.old_qdepth, meta.index);
                         if (meta.old_qdepth > hdr.hula.qdepth){
                             srcindex_qdepth_reg.write(meta.index, hdr.hula.qdepth);
                             srcindex_digest_reg.write(meta.index, hdr.hula.digest);
 
-                            /* return the packet */
+                            /* return the packet in reverse path */
                             hdr.hula.dir = 1;
                             standard_metadata.egress_spec = standard_metadata.ingress_port;
                         }else{
-                            /* update the oldpath if it has gone worse */
+                            /* update the oldpath even if it has gone worse */
                             digest_t old_digest;
                             srcindex_digest_reg.read(old_digest, meta.index);
                             if (old_digest == hdr.hula.digest){
@@ -289,35 +284,38 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
                             }
                             drop();
                         } 
-                        debug2.apply();
                     }
                 }
             }else {
-                /* update routing table */
+                /* update routing table in reverse path */
                 hula_bwd.apply();
-                /* drop if source */
+                /* drop if source ToR */
                 hula_src.apply();
             }
             if (hdr.ipv4.isValid()){
                 update_ttl();
             }
         }else if (hdr.ipv4.isValid()){
-            //hash<bit<16>, bit<16>, tuple<bit<32>, bit<32>, bit<16>>, bit<32>>(
             hash(
                 meta.hash, 
                 HashAlgorithm.crc16, 
                 16w0, 
                 { hdr.ipv4.srcAddr, hdr.ipv4.dstAddr, hdr.tcp.srcPort}, 
                 32w65536);
+
             /* look into hula tables */
             bit<16> port;
             flow_port_reg.read(port, (bit<32>)meta.hash);
             if (port == 0){
+                /* if it is a new flow check hula paths */
                 hula_nhop.apply();
                 flow_port_reg.write((bit<32>)meta.hash, (bit<16>)standard_metadata.egress_spec);
             }else{
+                /* old flows still use old path to avoid oscilation and packet reordering */
                 standard_metadata.egress_spec = (bit<9>)port;
             }
+
+            /* set the right dmac so that ping and iperf work */
             dmac.apply();
         }else {
             drop();
@@ -335,27 +333,12 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
     } 
     action nop(){}
 
-    table debug{
-        key = {
-            hdr.hula.dir: exact;
-            hdr.hula.qdepth: exact;
-            standard_metadata.deq_qdepth: exact;
-        }
-        actions = {
-            nop;
-        }
-        default_action = nop;
-        size = 1;
-    }
-
     apply {
         if (hdr.hula.isValid() && hdr.hula.dir == 0){
             if (hdr.hula.qdepth < (qdepth_t)standard_metadata.deq_qdepth){
                 /* update queue length */
                 hula_max_qdepth();
-            }else{
             } 
-            debug.apply();
         }
     }
 }
