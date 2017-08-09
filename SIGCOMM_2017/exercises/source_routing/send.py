@@ -25,13 +25,10 @@ def get_if():
 class SourceRoute(Packet):
    fields_desc = [ BitField("bos", 0, 1),
                    BitField("port", 0, 15)]
-class SourceRoutingTail(Packet):
-   fields_desc = [ XShortField("etherType", 0x800)]
 
 bind_layers(Ether, SourceRoute, type=0x1234)
 bind_layers(SourceRoute, SourceRoute, bos=0)
-bind_layers(SourceRoute, SourceRoutingTail, bos=1)
-bind_layers(SourceRoutingTail, IP, etherType=0x800)
+bind_layers(SourceRoute, IP, bos=1)
 
 def main():
 
@@ -47,7 +44,7 @@ def main():
     pkt = pkt / SourceRoute(bos=0, port=2) / SourceRoute(bos=0, port=3);
     pkt = pkt / SourceRoute(bos=0, port=2) / SourceRoute(bos=0, port=2);
     pkt = pkt / SourceRoute(bos=1, port=1)
-    pkt = pkt / SourceRoutingTail(etherType=0x800) / IP(dst=addr) / UDP(dport=4321, sport=1234)
+    pkt = pkt / IP(dst=addr) / UDP(dport=4321, sport=1234)
 #    pkt =  Ether(src=get_if_hwaddr(iface), dst='ff:ff:ff:ff:ff:ff') / IP(dst=addr) / UDP(dport=4321, sport=1234)
     pkt.show2()
     sendp(pkt, iface=iface, verbose=False)
