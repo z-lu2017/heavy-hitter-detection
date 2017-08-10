@@ -1,7 +1,10 @@
 Run `h1 ping h2`
-It doesn't work as there is not route setup
+
+It doesn't work as there is not route setup.
+
 Run `s1 ./send.py`. This sends hula packets from each ToR to all other ToRs
 on all different paths (using sourceRouting). 
+
 Hula packets save the max queue depth along path.
 Destination ToR returns the packet to source ToR along the same path (Source Routing) 
 if the packet has lower queue depth from the source than previous packets from that source, 
