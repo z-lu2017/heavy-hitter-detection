@@ -51,18 +51,21 @@ parser ParserImpl(packet_in packet,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
 
-    
     state start {
-	/* TODO: add transition to parsing ethernet */
-        transition accept;
+        transition parse_ethernet;
     }
 
     state parse_ethernet {
-	/* TODO: add parsing ethernet */
+        packet.extract(hdr.ethernet);
+        transition select(hdr.ethernet.etherType) {
+            TYPE_IPV4: parse_ipv4;
+            default: accept;
+        }
     }
 
     state parse_ipv4 {
-	/* TODO: add parsing ipv4 */
+        packet.extract(hdr.ipv4);
+        transition accept;
     }
 
 }
@@ -82,30 +85,24 @@ control verifyChecksum(in headers hdr, inout metadata meta) {
 *************************************************************************/
 
 control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
-
-    /* This action will drop packets */
     action drop() {
         mark_to_drop();
     }
     
     action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
-	/* 
-	* TODO: Implement the logic to:
-        * 1. Set the standard_metadata.egress_spec to the output port.
-        * 2. Set the ethernet srcAddr to the ethernet dstAddr.
-	* 3. Set the ethernet dstAddr to the dstAddr passed as a parameter.
-        * 4. Decrement the IP TTL.
-	* BONUS: Handle the case where TTL is 0.
-	*/
+        standard_metadata.egress_spec = port;
+        hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
+        hdr.ethernet.dstAddr = dstAddr;
+        hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
     
     table ipv4_lpm {
         key = {
-	    /* TODO: declare that the table will do a longest-prefix match (lpm)
-	    on the IP destination address. */
+            hdr.ipv4.dstAddr: lpm;
         }
         actions = {
-	    /* TODO: declare the possible actions: ipv4_forward or drop. */
+            ipv4_forward;
+            drop;
             NoAction;
         }
         size = 1024;
@@ -113,11 +110,9 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
     }
     
     apply {
-	/* TODO: replace drop with logic to:
-	* 1. Check if the ipv4 header is valid.
-	* 2. apply the table ipv4_lpm.
-	*/
-	drop();
+        if (hdr.ipv4.isValid()) {
+            ipv4_lpm.apply();
+        }
     }
 }
 
@@ -137,11 +132,26 @@ control computeChecksum(
     inout headers  hdr,
     inout metadata meta)
 {
-    /* 
-    * Ignore checksum for now. The reference solution contains a checksum
-    * implementation. 
-    */
-    apply {  }
+    Checksum16() ipv4_checksum;
+    
+    apply {
+        if (hdr.ipv4.isValid()) {
+            hdr.ipv4.hdrChecksum = ipv4_checksum.get(
+                {    
+                    hdr.ipv4.version,
+                    hdr.ipv4.ihl,
+                    hdr.ipv4.diffserv,
+                    hdr.ipv4.totalLen,
+                    hdr.ipv4.identification,
+                    hdr.ipv4.flags,
+                    hdr.ipv4.fragOffset,
+                    hdr.ipv4.ttl,
+                    hdr.ipv4.protocol,
+                    hdr.ipv4.srcAddr,
+                    hdr.ipv4.dstAddr
+                });
+        }
+    }
 }
 
 
