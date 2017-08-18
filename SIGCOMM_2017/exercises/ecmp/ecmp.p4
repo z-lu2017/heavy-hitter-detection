@@ -82,7 +82,7 @@ control MyIngress(inout headers hdr, inout metadata meta, inout standard_metadat
     action drop() {
         mark_to_drop();
     }
-    action set_ecmp_select(bit<10> ecmp_base, bit<10> ecmp_count) {
+    action set_ecmp_select(bit<16> ecmp_base, bit<32>ecmp_count) {
         hash(meta.ecmp_select, HashAlgorithm.crc16, ecmp_base, { hdr.ipv4.srcAddr, hdr.ipv4.dstAddr, hdr.ipv4.protocol, hdr.tcp.srcPort, hdr.tcp.dstPort }, ecmp_count);
     }
     action set_nhop(bit<32> nhop_ipv4, bit<9> port) {
