@@ -38,7 +38,6 @@ header tcp_t {
 
 struct metadata {
     bit<14> ecmp_select;
-    bit<32> nhop_ipv4;
 }
 
 struct headers {
@@ -86,7 +85,7 @@ control MyIngress(inout headers hdr, inout metadata meta, inout standard_metadat
         hash(meta.ecmp_select, HashAlgorithm.crc16, ecmp_base, { hdr.ipv4.srcAddr, hdr.ipv4.dstAddr, hdr.ipv4.protocol, hdr.tcp.srcPort, hdr.tcp.dstPort }, ecmp_count);
     }
     action set_nhop(bit<32> nhop_ipv4, bit<9> port) {
-        meta.nhop_ipv4 = nhop_ipv4;
+        hdr.ipv4.dstAddr = nhop_ipv4;
         standard_metadata.egress_spec = port;
         hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
@@ -115,7 +114,7 @@ control MyIngress(inout headers hdr, inout metadata meta, inout standard_metadat
     }
     table forward {
         key = {
-            meta.nhop_ipv4: exact;
+            hdr.ipv4.dstAddr : exact;
         }
         actions = {
             set_dmac;
