@@ -169,6 +169,10 @@ logic errors in your implementation.
 The `build/<switch-name>-<interface-name>.pcap` also contains the pcap of packets on each
 interface. Use `tcpdump -r <filename> -xxx` to print the hexdump of the packets.
 
+1. `ecn.p4` compiles and all rules are installed. Packets go through and
+the logs show that the queue length was not high enough to set the ECN bit.
+Then either lower the threshold in the p4 code or reduce the link bandwidth in `p4app.json`
+
 #### Cleaning up Mininet
 
 In the latter two cases above, `run.sh` may leave a Mininet instance running in
