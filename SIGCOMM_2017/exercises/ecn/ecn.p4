@@ -4,6 +4,7 @@
 
 const bit<8>  TCP_PROTOCOL = 0x06;
 const bit<16> TYPE_IPV4 = 0x800;
+const bit<19> ECN_THRESHOLD = 10;
 
 /*************************************************************************
 *********************** H E A D E R S  ***********************************
@@ -124,12 +125,9 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
     action mark_ecn() {
         hdr.ipv4.ecn = 3;
     }
-    register<bit<32>>(1) threshold_reg; 
     apply {
-        bit<32> threshold_tmp;
         if (hdr.ipv4.ecn == 1 || hdr.ipv4.ecn == 2){
-            threshold_reg.read(threshold_tmp, 0);
-            if ((bit<32>)standard_metadata.deq_qdepth >= threshold_tmp){
+            if (standard_metadata.deq_qdepth >= ECN_THRESHOLD){
                 mark_ecn();
             }
         }
