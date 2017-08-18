@@ -37,22 +37,14 @@ header tcp_t {
 }
 
 struct metadata {
+    bit<14> ecmp_select;
     bit<32> nhop_ipv4;
-    bit<14> ecmp_offset;
 }
 
 struct headers {
     ethernet_t ethernet;
     ipv4_t     ipv4;
     tcp_t      tcp;
-}
-
-struct ecmp_fields_t {
-    bit<32> srcAddr;
-    bit<32> dstAddr;
-    bit<8> protocol;
-    bit<16> srcPort;
-    bit<16> dstPort;    
 }
 
 parser MyParser(packet_in packet, out headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
@@ -91,13 +83,7 @@ control MyIngress(inout headers hdr, inout metadata meta, inout standard_metadat
         mark_to_drop();
     }
     action set_ecmp_select(bit<10> ecmp_base, bit<10> ecmp_count) {
-        ecmp_fields_t ecmp_fields;
-	ecmp_fields.srcAddr = hdr.ipv4.srcAddr;
-	ecmp_fields.dstAddr = hdr.ipv4.dstAddr;
-	ecmp_fields.protocol = hdr.ipv4.protocol;
-	ecmp_fields.srcPort = hdr.tcp.srcPort;
-	ecmp_fields.dstPort = hdr.tcp.dstPort;
-        hash(meta.ecmp_offset, HashAlgorithm.crc16, ecmp_base, ecmp_fields, ecmp_count);
+        hash(meta.ecmp_select, HashAlgorithm.crc16, ecmp_base, { hdr.ipv4.srcAddr, hdr.ipv4.dstAddr, hdr.ipv4.protocol, hdr.tcp.srcPort, hdr.tcp.dstPort }, ecmp_count);
     }
     action set_nhop(bit<32> nhop_ipv4, bit<9> port) {
         meta.nhop_ipv4 = nhop_ipv4;
@@ -119,7 +105,7 @@ control MyIngress(inout headers hdr, inout metadata meta, inout standard_metadat
     }
     table ecmp_nhop {
         key = {
-            meta.ecmp_offset: exact;
+            meta.ecmp_select: exact;
         }
         actions = {
             drop;
@@ -137,12 +123,19 @@ control MyIngress(inout headers hdr, inout metadata meta, inout standard_metadat
         }
         size = 512;
     }
+    table debug {
+       key = {
+            meta.ecmp_select: exact;
+       }
+       actions = { }
+    }
     apply {
         if (hdr.ipv4.isValid() && hdr.ipv4.ttl > 0) {
             ecmp_group.apply();
             ecmp_nhop.apply();
             forward.apply();
         }
+	debug.apply();
     }
 }
 control MyEgress(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
