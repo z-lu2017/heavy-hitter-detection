@@ -1,0 +1,3 @@
+table_set_default ipv4_lpm drop
+table_add ipv4_lpm ipv4_forward 245.255.254.254/32 => 00:00:00:00:00:00 1
+table_add ipv4_lpm ipv4_forward 245.255.254.253/32 => 00:00:00:00:00:00 2
