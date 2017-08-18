@@ -67,18 +67,20 @@ parser ParserImpl(packet_in packet,
 
     state parse_ethernet {
         packet.extract(hdr.ethernet);
-        transition select(hdr.ethernet.etherType) {
-            TYPE_SRCROUTING: parse_srcRouting;
-            default: accept;
-        }
+        /*
+         * TODO: Modify the next line to select on the value of hdr.ethernet.etherType
+         * If the value is TYPE_SRCROUTING go to parse_srcRouting otherwise accept.
+         */
+        transition accept;
     }
 
     state parse_srcRouting {
-        packet.extract(hdr.srcRoutes.next);
-        transition select(hdr.srcRoutes.last.bos) {
-            1: parse_ipv4;
-            default: parse_srcRouting;
-        }
+        /*
+         * TODO: extract the next entry of hdr.srcRoutes
+         * while hdr.srcRoutes.last.bos is 0 transition to this state
+         * otherwise parse ipv4
+         */
+        transition accept;
     }
 
     state parse_ipv4 {
@@ -110,8 +112,10 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
     }
     
     action srcRoute_nhop() {
-        standard_metadata.egress_spec = (bit<9>)hdr.srcRoutes[0].port;
-        hdr.srcRoutes.pop_front(1);
+        /*
+         * TODO: change standard_metadata.egress_spec to the port of hdr.srcRoutes[0]
+         * and pop 1 entry from hdr.srcRoutes
+         */
     }
 
     action srcRoute_finish() {
@@ -124,10 +128,13 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
     
     apply {
         if (hdr.srcRoutes[0].isValid()){
-            if (hdr.srcRoutes[0].bos == 1){
-                srcRoute_finish();
-            }
-            srcRoute_nhop();
+            /*
+             * TODO: add logic to:
+             * - If last srcRoutes (top of stack has bos==1):
+             *   - change etherType to IP
+             * - choose next hop and remove top of srcRoutes stack
+             */
+
             if (hdr.ipv4.isValid()){
                 update_ttl();
             }
