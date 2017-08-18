@@ -20,13 +20,11 @@ header ethernet_t {
     bit<16>   etherType;
 }
 
-/*
- * TODO: split tos to two fields 6 bit diffserv and 2 bit ecn
- */
 header ipv4_t {
     bit<4>    version;
     bit<4>    ihl;
-    bit<8>    tos;
+    bit<6>    diffserv;
+    bit<2>    ecn;
     bit<16>   totalLen;
     bit<16>   identification;
     bit<3>    flags;
@@ -124,12 +122,15 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
 *************************************************************************/
 
 control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
+    action mark_ecn() {
+        hdr.ipv4.ecn = 3;
+    }
     apply {
-        /*
-         * TODO:
-         * - if ecn is 1 or 2
-         *  - compare standard_metadata.enq_qdepth with threshold and set dr.ipv4.ecn to 3 
-         */
+        if (hdr.ipv4.ecn == 1 || hdr.ipv4.ecn == 2){
+            if (standard_metadata.enq_qdepth >= ECN_THRESHOLD){
+                mark_ecn();
+            }
+        }
     }
 }
 
@@ -144,16 +145,14 @@ control computeChecksum(
 {
     Checksum16() ipv4_checksum;
     
-    /*
-     * TODO: replace tos with diffserve and ecn in checksum
-     */
     apply {
         if (hdr.ipv4.isValid()) {
             hdr.ipv4.hdrChecksum = ipv4_checksum.get(
             {    
                 hdr.ipv4.version,
                 hdr.ipv4.ihl,
-                hdr.ipv4.tos,
+                hdr.ipv4.diffserv,
+                hdr.ipv4.ecn,
                 hdr.ipv4.totalLen,
                 hdr.ipv4.identification,
                 hdr.ipv4.flags,

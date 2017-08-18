@@ -1,25 +1,17 @@
-h22 iperf -s -u > h22.log &
-h2 ./receive.py > h2.log &
-h1 ./send.py h2 x 30 > h1.log &
-h11 iperf -c h22 -t 15 -u > h11.log &
-
-grep tos build/h2.log
-
-# Implementing MRI
+# Implementing ECN
 
 ## Introduction
 
-The objective of this tutorial is to extend basic L3 forwarding with a
-scaled-down version of In-Band Network Telemetry (INT), which we call
-Multi-Hop Route Inspection (MRI).
+The objective of this tutorial is to extend basic L3 forwarding with an
+implementation of Explict Congestion Notification (ECN).
 
-MRI allows users to track the path that every packet travels through
-the network. To support this functionality, you will need to write a
-P4 program that appends an ID to the header stack of every packet. At
-the destination, the sequence of switch IDs correspond to the path.
+ECN allows end-to-end notification of network congestion without dropping packets.
+If an end-host supports ECN, it puts the value of 1 or 2 in the ipv4.ecn field.
+For such packets, each switch may change the value to 3 if the 
+queue size is larger than a threshold.
 
-As before, we have already defined the control plane rules, so you
-only need to implement the data plane logic of your P4 program.
+As before, we have already defined the control plane rules for routing,
+so you only need to implement the data plane logic of your P4 program.
 
 > **Spoiler alert:** There is a reference solution in the `solution`
 > sub-directory. Feel free to compare your implementation to the reference.
@@ -27,113 +19,87 @@ only need to implement the data plane logic of your P4 program.
 ## Step 1: Run the (incomplete) starter code
 
 The directory with this README also contains a skeleton P4 program,
-`mri.p4`, which initially implements L3 forwarding.  Your job (in the
-next step) will be to extend it to properly append the MRI custom
-headers.
+`ecn.p4`, which initially implements L3 forwarding. Your job (in the
+next step) will be to extend it to properly append set the ECN bits
 
-Before that, let's compile the incomplete `mri.p4` and bring up a
-switch in Mininet to test its behavior.
+Before that, let's compile the incomplete `ecn.p4` and bring up a
+network in Mininet to test its behavior.
 
 1. In your shell, run:
    ```bash
    ./run.sh
    ```
    This will:
-   * compile `mri.p4`, and
+   * compile `ecn.p4`, and
    * start a Mininet instance with three switches (`s1`, `s2`, `s3`) configured
-     in a triangle, each connected to one host (`h1`, `h2`, `h3`).
-   * The hosts are assigned IPs of `10.0.1.10`, `10.0.2.10`, etc.
+     in a triangle. There are 5 hosts. `h1` and `h11` are connected to `s1`.
+     `h2` and `h22` are connected to `s2` and `h3` is connected to `s3`.
+   * The hosts are assigned IPs of `10.0.1.1`, `10.0.2.2`, etc (10.0.<Switchid>.<hostID>).
+   * The control plane programs the P4 tables in each switch based on `sx-commands.txt`
 
-2. You should now see a Mininet command prompt.  Open two terminals for `h1` and `h2`, respectively:
+2. We want to send a low rate traffic from h1 to h2 and a high rate iperf traffic from h11 to h22.
+The link between s1 and s2 is common between the flows and is a bottleneck 
+because we reduced its bandwidth to 512kbps in p4app.json. 
+Therefore, if we capture packets at h2, we should see the right ecn value.
+
+3. You should now see a Mininet command prompt. Open four terminals for `h1`, `h11, `h2`, `h22`, respectively:
    ```bash
-   mininet> xterm h1 h2
+   mininet> xterm h1 h11 h2 h22
    ```
-3. Each host includes a small Python-based messaging client and server.  In `h2`'s xterm, start the server:
+3. In `h2`'s xterm, start the server that captures packets:
    ```bash
    ./receive.py
    ```
-4. In `h1`'s xterm, send a message from the client:
+4. in `h22`'s xterm, start the iperf UDP server:
    ```bash
-   ./send.py 10.0.2.10 "P4 is cool"
+   iperf -s -u
+   ```
+5. In `h1`'s xterm, send one packet per second to h2 using send.py say for 30 seconds:
+   ```bash
+   ./send.py 10.0.2.2 "P4 is cool" 30
    ```
    The message "P4 is cool" should be received in `h2`'s xterm,
-5. Type `exit` to leave each xterm and the Mininet command line.
+6. In `h11`'s xterm, start iperf client sending for 15 seconds
+   ```bash
+   h11 iperf -c h22 -t 15 -u
+   ```
+7. At h2, the ipv4.tos field (diffserv+ecn) is always 1
+8. type `exit` to close each xterm window
 
-You should see the message received at host `h2`, but without any information
-about the path the message took.  Your job is to extend the code in `mri.p4` to
-implement the MRI logic to record the path.
-
-
-### A note about the control plane
-
-P4 programs define a packet-processing pipeline, but the rules governing packet
-processing are inserted into the pipeline by the control plane.  When a rule
-matches a packet, its action is invoked with parameters supplied by the control
-plane as part of the rule.
-
-In this exercise, the control plane logic has already been implemented.  As
-part of bringing up the Mininet instance, the `run.sh` script will install
-packet-processing rules in the tables of each switch.  These are defined in the
-`sX-commands.txt` files, where `X` corresponds to the switch number.
+Your job is to extend the code in `ecn.p4` to
+implement the ECN logic for setting the ECN flag.
 
 
-## Step 2: Implement MRI
+## Step 2: Implement ECN
 
-
-The `mri.p4` file contains a skeleton P4 program with key pieces of
+The `ecn.p4` file contains a skeleton P4 program with key pieces of
 logic replaced by `TODO` comments.  These should guide your
 implementation---replace each `TODO` with logic implementing the missing piece.
 
-MRI will require two custom headers. The first header, `mri_t`,
-contains a single field `count`, which indicates the number of switch
-IDs that follow. The second header, `switch_t`, contains a single
-field with the switch ID. 
+First we have to change the ipv4_t header by splitting the tos field into 
+diffserv and ecn fields.
+Remember to update the checksum block accordingly.
+Then, in the egress control block we need to compare the queue length with
+ECN_THRESHOLD. If the queue length is larger than the threshold,
+the ECN flag will be set.
+Note that this logic should happen only if the end-host declared supporting
+ECN by setting the original ECN to 1 or 2.
 
-One of the biggest challenges in implementing MRI is handling the
-recursive logic for parsing these two headers. We will use a
-`parser_metadata` field, `remaining`, to keep track of how many
-`switch_t` headers we need to parse.  In the `parse_mri` state, this
-field should be set to `hdr.mri.count`.  In the `parse_swid` state,
-this field should be decremented. The `parse_swid` state will
-transition to itself until `remaining` is 0.
+A complete `ecn.p4` will contain the following components:
 
-The MRI custom headers will be carried inside an IP Options
-header. The IP Options header contains a field, `option`, which
-indicates the type of the option. We will use a special type 31 to
-indicate the presence of the MRI headers.
-
-Beyond the parser logic, you will add a table, `swid` to store the
-switch ID, and actions that add the `mri_t` header if it doesn't
-exist, increment the `count` field, and append a `switch_t` header.
-
-
-A complete `mri.p4` will contain the following components:
-
-
-1. Header type definitions for Ethernet (`ethernet_t`), IPv4 (`ipv4_t`),
-   IP Options (`ipv4_option_t`), MRI (`mri_t`), and Switch (`switch_t`). 
-2. Parsers for Ethernet, IPv4, IP Options, MRI, and Switch that will
-populate `ethernet_t`, `ipv4_t`, `ipv4_option_t`, `mri_t`, and
-`switch_t`.
+1. Header type definitions for Ethernet (`ethernet_t`) and IPv4 (`ipv4_t`).
+2. Parsers for Ethernet, IPv4,
 3. An action to drop a packet, using `mark_to_drop()`.
 4. An action (called `ipv4_forward`), which will:
 	1. Set the egress port for the next hop. 
 	2. Update the ethernet destination address with the address of the next hop. 
 	3. Update the ethernet source address with the address of the switch. 
 	4. Decrement the TTL.
-5. An action (called `add_mri_option`) that will add the IP Options and MRI
-header. Note that you can use the `setValid()` function, which adds a
-header if it does not exist, but otherwise leaves the packet
-unmodified.
-6. An action (called `add_swid`) that will add the switch ID header.
-7. A table (`swid`) to store the switch ID, and calls `add_swid`. 
-8. A control that:
-    1. Defines a table that will read an IPv4 destination address, and
-       invoke either `drop` or `ipv4_forward`.
-    1. An `apply` block that applies the table.
-9. A deparser that selects the order in which fields inserted into the outgoing
+5. An egress control block that checks the packets ECN and enq_qdepth
+and sets the ipv4.ecn.
+6. A deparser that selects the order in which fields inserted into the outgoing
    packet.
-10. A `package` instantiation supplied with the parser, control, and deparser.
+7. A `package` instantiation supplied with the parser, control, and deparser.
     
     > In general, a package also requires instances of checksum verification
     > and recomputation controls.  These are not necessary for this tutorial
@@ -143,57 +109,66 @@ unmodified.
 ## Step 3: Run your solution
 
 Follow the instructions from Step 1.  This time, when your message from `h1` is
- delivered to `h2`, you should see the seqeunce of switches
-through which the packet traveled. The expected output will look like the
-following, which shows the MRI header, with a `count` of 2, and switch ids (`swids`) 2 and 1.
+ delivered to `h2`, you should see tos values change from 1 to 3 as the queue builds up.
+Tos may change back to 1 when iperf finishes and the queue depletes.
+
+To easily track the tos values you may want to redirect the output of h2 to a file by
+running the following for h2
+   ```bash
+   ./receive.py > h2.log
+   ```
+and just print the tos values `grep tos build/h2.log` in a separate window
 
 ```
-
-got a packet
-###[ Ethernet ]###
-  dst       = 00:aa:00:02:00:02
-  src       = f2:ed:e6:df:4e:fa
-  type      = 0x800
-###[ IP ]###
-     version   = 4L
-     ihl       = 8L
-     tos       = 0x0
-     len       = 33
-     id        = 1
-     flags     =
-     frag      = 0L
-     ttl       = 62
-     proto     = udp
-     chksum    = 0x63b8
-     src       = 10.0.1.10
-     dst       = 10.0.2.10
-     \options   \
-      |###[ MRI ]###
-      |  copy_flag = 1L
-      |  optclass  = debug
-      |  option    = 31L
-      |  length    = 12
-      |  count     = 2
-      |  swids     = [2, 1]
+     tos       = 0x1
+     tos       = 0x1
+     tos       = 0x1
+     tos       = 0x1
+     tos       = 0x1
+     tos       = 0x1
+     tos       = 0x1
+     tos       = 0x1
+     tos       = 0x1
+     tos       = 0x1
+     tos       = 0x1
+     tos       = 0x1
+     tos       = 0x1
+     tos       = 0x3
+     tos       = 0x3
+     tos       = 0x3
+     tos       = 0x3
+     tos       = 0x3
+     tos       = 0x3
+     tos       = 0x1
+     tos       = 0x1
+     tos       = 0x1
+     tos       = 0x1
+     tos       = 0x1
+     tos       = 0x1
 ```
+
+### Food for thought
+How can we let the user configure the threshold?
 
 ### Troubleshooting
 
 There are several ways that problems might manifest:
 
-1. `mri.p4` fails to compile.  In this case, `run.sh` will report the
+1. `ecn.p4` fails to compile.  In this case, `run.sh` will report the
 error emitted from the compiler and stop.
 
-1. `mri.p4` compiles but does not support the control plane rules in
+1. `ecn.p4` compiles but does not support the control plane rules in
 the `sX-commands.txt` files that `run.sh` tries to install using the BMv2 CLI.
 In this case, `run.sh` will report these errors to `stderr`.  Use these error
-messages to fix your `ipv4_forward.p4` implementation.
+messages to fix your `ecn.p4` implementation.
 
-1. `mri.p4` compiles, and the control plane rules are installed, but
+1. `ecn.p4` compiles, and the control plane rules are installed, but
 the switch does not process packets in the desired way.  The
 `build/logs/<switch-name>.log` files contain trace messages describing how each
 switch processes each packet.  The output is detailed and can help pinpoint
 logic errors in your implementation.
+The `build/<switch-name>-<interface-name>.pcap also contains the pcap of packets on each
+interface. Use `tcpdump -r <filename> -xxx` to print the hexdump of the packets.
 
 #### Cleaning up Mininet
 
@@ -207,7 +182,4 @@ mn -c
 ## Next Steps
 
 Congratulations, your implementation works!  Move on to the next exercise:
-implementing an [ARP and ICMP Responder](../arp).
-
-
-
+Implementing [MRI](../mri) to find which link has congestion
