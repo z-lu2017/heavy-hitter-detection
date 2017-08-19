@@ -2,10 +2,11 @@
 # vi: set ft=ruby :
 
 Vagrant.configure(2) do |config|
-  config.vm.box = "halvards/lubuntu1604"
+  config.vm.box = "bento/ubuntu-16.04"
   config.vm.provider "virtualbox" do |vb|
     vb.gui = true
     vb.memory = "2048"
+    vb.customize ["modifyvm", :id, "--cableconnected1", "on"]
   end
   config.vm.hostname = "p4"
   config.vm.provision "shell", path: "root-bootstrap.sh"

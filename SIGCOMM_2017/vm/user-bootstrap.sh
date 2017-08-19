@@ -16,7 +16,7 @@ cd ..
 git clone https://github.com/google/protobuf.git
 cd protobuf
 git checkout v3.0.2
-sudo apt-get install autoconf automake libtool curl make g++ unzip
+sudo apt-get install -y autoconf automake libtool curl make g++ unzip
 ./autogen.sh
 ./configure
 make
@@ -26,7 +26,7 @@ cd ..
 
 # P4C
 git clone --recursive https://github.com/p4lang/p4c
-sudo apt-get install g++ git automake libtool libgc-dev bison flex libfl-dev libgmp-dev libboost-dev libboost-iostreams-dev pkg-config python python-scapy python-ipaddr tcpdump cmake
+sudo apt-get install -y g++ git automake libtool libgc-dev bison flex libfl-dev libgmp-dev libboost-dev libboost-iostreams-dev pkg-config python python-scapy python-ipaddr tcpdump cmake
 cd p4c
 mkdir build
 cd build
