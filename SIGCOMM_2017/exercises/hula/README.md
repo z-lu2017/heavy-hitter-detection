@@ -23,11 +23,11 @@ Here is how Hula works:
    observed queue length at that switch. Thus when the packet reaches the destination
    ToR, queue length field will be the maximum observed queue length.
  - At destination ToR, 
-  1. find the queue length of current best path from the source ToR
-  1. if the new path is better, update the queue length and best path and return
+   1. find the queue length of current best path from the source ToR
+   1. if the new path is better, update the queue length and best path and return
      hula packet to the source path. This is done by setting the direction field
      in the hula header and returning the packet to the ingress port.
-  1. if the packet came from the current best path, just update the value.
+   1. if the packet came from the current best path, just update the value.
      This is to know if the best path got worse and allows other paths to replace it later.
      It is inefficient to save the whole path and compare it in the data plane.
      Instead, we keep a 32 bit digest of path in the hula header. Each destination ToR,
@@ -231,14 +231,13 @@ iperf -c 10.0.3.3 -t 30 -u -b 2m
 This should let `s3` to know that the current chosen path has large queue length.
 But because of the path is congested, it will reach after updates from other paths.
 Let's send hula packets again so that the better path can replace current path.
-
-5. Wait a few seconds and run it again.
 ```bash
 ./send.py
 ```
 Alternatively, you can force `send.py` to run every five seconds by passing `5` as
 an argument.
-6. run iperf client in `h2`
+
+5. run iperf client in `h2`
 ```bash
 iperf -c 10.0.3.3 -t 30 -u -b 2m
 ```
