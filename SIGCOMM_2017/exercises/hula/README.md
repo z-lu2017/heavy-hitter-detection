@@ -117,12 +117,12 @@ A complete `hula.p4` will contain the following components:
    Source Routing (`srcRoute_t`), IPv4 (`ipv4_t`), UDP(`udp_t`).
 2. Parsers for the above headers.
 3. Registers:
-  1. `srcindex_qdepth_reg`: At destination ToR saves queue length of the best path
+  - `srcindex_qdepth_reg`: At destination ToR saves queue length of the best path
      from each Source ToR
-  1. `srcindex_digest_reg`: At destination ToR saves the digest of the best path
+  - `srcindex_digest_reg`: At destination ToR saves the digest of the best path
      from each Source ToR
-  1. `dstindex_nhop_reg`: At each hop, saves the next hop to reach each destination ToR
-  1. `flow_port_reg`: At each hop saves the next hop for each flow
+  - `dstindex_nhop_reg`: At each hop, saves the next hop to reach each destination ToR
+  - `flow_port_reg`: At each hop saves the next hop for each flow
 4. `hula_fwd table`: looks at destination IP of hula packets. If it is the destination ToR,
    it runs `hula_dst` action to set `meta.index` field based on source IP (source ToR).
    The index is used later to find queue depth and digest of current best path from that source ToR.
@@ -163,8 +163,8 @@ action. The action updates `dstindex_nhop_reg` register.
     to hosts. Otherwise their NIC will drop packets.
   * udpate TTL
 5. **TODO:** An egress control that:
-  1. For hula packets that are in forward path (`hdr.hula.dir==0`)
-  1. Compare `standard_metadata.deq_qdepth` to `hdr.hula.qdepth` 
+  * For hula packets that are in forward path (`hdr.hula.dir==0`)
+  * Compare `standard_metadata.deq_qdepth` to `hdr.hula.qdepth` 
      in order to save the maximum  in `hdr.hula.qdepth`
 7. A deparser that selects the order in which fields inserted into the outgoing
    packet.
