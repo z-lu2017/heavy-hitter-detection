@@ -117,12 +117,12 @@ A complete `hula.p4` will contain the following components:
    Source Routing (`srcRoute_t`), IPv4 (`ipv4_t`), UDP(`udp_t`).
 2. Parsers for the above headers.
 3. Registers:
- 1. `srcindex_qdepth_reg`: At destination ToR saves queue length of the best path
+  1. `srcindex_qdepth_reg`: At destination ToR saves queue length of the best path
      from each Source ToR
- 1. `srcindex_digest_reg`: At destination ToR saves the digest of the best path
+  1. `srcindex_digest_reg`: At destination ToR saves the digest of the best path
      from each Source ToR
- 1. `dstindex_nhop_reg`: At each hop, saves the next hop to reach each destination ToR
- 1. `flow_port_reg`: At each hop saves the next hop for each flow
+  1. `dstindex_nhop_reg`: At each hop, saves the next hop to reach each destination ToR
+  1. `flow_port_reg`: At each hop saves the next hop for each flow
 4. `hula_fwd table`: looks at destination IP of hula packets. If it is the destination ToR,
    it runs `hula_dst` action to set `meta.index` field based on source IP (source ToR).
    The index is used later to find queue depth and digest of current best path from that source ToR.
@@ -138,30 +138,30 @@ action. The action updates `dstindex_nhop_reg` register.
 8. dmac table just updates ethernet destination address based on next hop.
 9. An apply block that has the following logic:
   * If the packet has hula header
-   * In forward path (`hdr.hula.dir==0`):
-    * Apply `hula_fwd` table to check if it is destination ToR or not
-    * If this switch is the destination ToR (`hula_dst` action ran and 
+    * In forward path (`hdr.hula.dir==0`):
+      * Apply `hula_fwd` table to check if it is destination ToR or not
+      * If this switch is the destination ToR (`hula_dst` action ran and 
       set the `meta.index` based on the source IP address):
-     * read `srcindex_qdepth_reg` for the queue length of
+        * read `srcindex_qdepth_reg` for the queue length of
        the current best path from the source ToR
-     * If the new queue length is better, update the entry in `srcindex_qdepth_reg` and
+        * If the new queue length is better, update the entry in `srcindex_qdepth_reg` and
        save the path digest in `srcindex_digest_reg`. Then return the hula packet to the source ToR
        by sending to its ingress port and setting `hula.dir=1` (reverse path)
-     * else, if this hula packet came through current best path (`hula.digest` is equal to 
+      * else, if this hula packet came through current best path (`hula.digest` is equal to 
        the value in `srcindex_digest_reg`), update its queue length in `srcindex_qdepth_reg`.
        In this case we don't need to send the hula packet back, thus drop the packet.
-   * in backward path (`hdr.hula.dir==1`):
-    * apply `hula_bwd` to update the hula next hop to the destination ToR
-    * apply `hula_src` table to drop the packet if it is the source ToR of the hula packet
- * If it is a data packet
-  * compute the hash of flow
-  * **TODO** read nexthop port from `flow_port_reg` into a temporary variable, say `port`. 
-  * **TODO** If no entry found (`port==0`), read next hop by applying `hula_nhop` table.
+    * in backward path (`hdr.hula.dir==1`):
+      * apply `hula_bwd` to update the hula next hop to the destination ToR
+      * apply `hula_src` table to drop the packet if it is the source ToR of the hula packet
+  * If it is a data packet
+    * compute the hash of flow
+    * **TODO** read nexthop port from `flow_port_reg` into a temporary variable, say `port`. 
+    * **TODO** If no entry found (`port==0`), read next hop by applying `hula_nhop` table.
      Then save the value into `flow_port_reg` for later packets.
-  * **TODO** if it is found, save `port` into `standard_metadata.egress_spec` to finish routing.
-  * apply `dmac` table to update `ethernet.dstAddr`. This is necessary for the links that send packets
+    * **TODO** if it is found, save `port` into `standard_metadata.egress_spec` to finish routing.
+    * apply `dmac` table to update `ethernet.dstAddr`. This is necessary for the links that send packets
     to hosts. Otherwise their NIC will drop packets.
- * udpate TTL
+  * udpate TTL
 5. **TODO:** An egress control that:
   1. For hula packets that are in forward path (`hdr.hula.dir==0`)
   1. Compare `standard_metadata.deq_qdepth` to `hdr.hula.qdepth` 
