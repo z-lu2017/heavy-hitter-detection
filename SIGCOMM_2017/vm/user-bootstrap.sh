@@ -16,7 +16,6 @@ cd ..
 git clone https://github.com/google/protobuf.git
 cd protobuf
 git checkout v3.0.2
-sudo apt-get install -y autoconf automake libtool curl make g++ unzip
 ./autogen.sh
 ./configure
 make
@@ -26,7 +25,6 @@ cd ..
 
 # P4C
 git clone --recursive https://github.com/p4lang/p4c
-sudo apt-get install -y g++ git automake libtool libgc-dev bison flex libfl-dev libgmp-dev libboost-dev libboost-iostreams-dev pkg-config python python-scapy python-ipaddr tcpdump cmake
 cd p4c
 mkdir build
 cd build
@@ -41,3 +39,5 @@ git clone https://github.com/p4lang/tutorials
 cd tutorials
 git checkout sigcomm_17
 cd ..
+sudo mv tutorials /home/p4
+sudo chown -R p4:p4 /home/p4/tutorials
