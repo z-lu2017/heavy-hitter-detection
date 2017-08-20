@@ -2,7 +2,8 @@
 
 ## Introduction
 
-The objective of this tutorial is to implement a simplified version of Hula.
+The objective of this tutorial is to implement a simplified version of 
+[Hula](http://web.mit.edu/anirudh/www/hula-sosr16.pdf).
 In contrast to ECMP, which selects the next hop randomly, Hula load balances
 the flows over multiple paths to a destination ToR based on queue occupancy
 of switches in each path. Thus, it can use the whole bisection bandwidth.
@@ -116,12 +117,12 @@ A complete `hula.p4` will contain the following components:
    Source Routing (`srcRoute_t`), IPv4 (`ipv4_t`), UDP(`udp_t`).
 2. Parsers for the above headers.
 3. Registers:
-  1. `srcindex_qdepth_reg`: At destination ToR saves queue length of the best path
+ 1. `srcindex_qdepth_reg`: At destination ToR saves queue length of the best path
      from each Source ToR
-  1. `srcindex_digest_reg`: At destination ToR saves the digest of the best path
+ 1. `srcindex_digest_reg`: At destination ToR saves the digest of the best path
      from each Source ToR
-  1. `dstindex_nhop_reg`: At each hop, saves the next hop to reach each destination ToR
-  1. `flow_port_reg`: At each hop saves the next hop for each flow
+ 1. `dstindex_nhop_reg`: At each hop, saves the next hop to reach each destination ToR
+ 1. `flow_port_reg`: At each hop saves the next hop for each flow
 4. `hula_fwd table`: looks at destination IP of hula packets. If it is the destination ToR,
    it runs `hula_dst` action to set `meta.index` field based on source IP (source ToR).
    The index is used later to find queue depth and digest of current best path from that source ToR.
@@ -179,6 +180,7 @@ s1 ./send.py
 ```
 to send hula packets from all ToR switches (`s1`, `s2` and `s3`) to each other
 on all paths.
+
 3. run `h1 ping h2`. The ping should work if you have completed the ingress control block
  
 Now we are going to test a more complex scenario.
@@ -229,6 +231,7 @@ iperf -c 10.0.3.3 -t 30 -u -b 2m
 This should let `s3` to know that the current chosen path has large queue length.
 But because of the path is congested, it will reach after updates from other paths.
 Let's send hula packets again so that the better path can replace current path.
+
 5. Wait a few seconds and run it again.
 ```bash
 ./send.py
