@@ -139,7 +139,7 @@ action. The action updates `dstindex_nhop_reg` register.
 9. An apply block that has the following logic:
   * If the packet has hula header
     * In forward path (`hdr.hula.dir==0`):
-      * Apply `hula_fwd` table to check if it is destination ToR or not
+      * Apply `hula_fwd` table to check if it is the destination ToR or not
       * If this switch is the destination ToR (`hula_dst` action ran and 
       set the `meta.index` based on the source IP address):
         * read `srcindex_qdepth_reg` for the queue length of
@@ -163,9 +163,9 @@ action. The action updates `dstindex_nhop_reg` register.
     to hosts. Otherwise their NIC will drop packets.
   * udpate TTL
 5. **TODO:** An egress control that:
-  * For hula packets that are in forward path (`hdr.hula.dir==0`)
-  * Compare `standard_metadata.deq_qdepth` to `hdr.hula.qdepth` 
-     in order to save the maximum  in `hdr.hula.qdepth`
+ 1. For hula packets that are in forward path (`hdr.hula.dir==0`)
+ 1. Compare `standard_metadata.deq_qdepth` to `hdr.hula.qdepth` 
+     in order to save the maximum in `hdr.hula.qdepth`
 7. A deparser that selects the order in which fields inserted into the outgoing
    packet.
 8. A `package` instantiation supplied with the parser, control, checksum verification and
