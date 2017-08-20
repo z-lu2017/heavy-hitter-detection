@@ -348,16 +348,18 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
                 { hdr.ipv4.srcAddr, hdr.ipv4.dstAddr, hdr.udp.srcPort}, 
                 32w65536);
 
-            /* TODO:
-             * - Remove drop();
-             * - Read nexthop port from flow_port_reg for the flow
-             *   using flow_hash into a temporary variable
-             * - if port==0,
-             *  - apply hula_nhop table to get next hop for destination ToR 
-             *  - write the next hop into the flow_port_reg register indexed by flow_hash
-             * - else: write port into standard_metadata.egress_spec
-             */
-            drop();
+            /* look into hula tables */
+            bit<16> port;
+            flow_port_reg.read(port, (bit<32>)flow_hash);
+
+            if (port == 0){
+                /* if it is a new flow check hula paths */
+                hula_nhop.apply();
+                flow_port_reg.write((bit<32>)flow_hash, (bit<16>)standard_metadata.egress_spec);
+            }else{
+                /* old flows still use old path to avoid oscilation and packet reordering */
+                standard_metadata.egress_spec = (bit<9>)port;
+            }
 
             /* set the right dmac so that ping and iperf work */
             dmac.apply();
@@ -377,11 +379,15 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
 
 control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
     apply {
-        /* TODO:
-         * if hula header is valid and this is forward path (hdr.hula.dir==0)
-         * check if the qdepth in hula is smaller than (qdepth_t)standard_metadata.deq_qdepth
-         * if yes update hdr.hula.qdepth
-         */
+        if (hdr.hula.isValid() && hdr.hula.dir == 0){
+
+            /* pick max qdepth in hula forward path */
+            if (hdr.hula.qdepth < (qdepth_t)standard_metadata.deq_qdepth){
+
+                /* update queue length */
+                hdr.hula.qdepth = (qdepth_t)standard_metadata.deq_qdepth;
+            } 
+        }
     }
 }
 
