@@ -163,8 +163,8 @@ action. The action updates `dstindex_nhop_reg` register.
     to hosts. Otherwise their NIC will drop packets.
   * udpate TTL
 5. **TODO:** An egress control that:
- 1. For hula packets that are in forward path (`hdr.hula.dir==0`)
- 1. Compare `standard_metadata.deq_qdepth` to `hdr.hula.qdepth` 
+   * For hula packets that are in forward path (`hdr.hula.dir==0`)
+   * Compare `standard_metadata.deq_qdepth` to `hdr.hula.qdepth` 
      in order to save the maximum in `hdr.hula.qdepth`
 7. A deparser that selects the order in which fields inserted into the outgoing
    packet.
