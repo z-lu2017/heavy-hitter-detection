@@ -17,12 +17,8 @@ with P4 programming:
 
 ## Obtaining required software
 
-If you are starting this tutorial as part of the P4 Developer Day, then
-we've already provided you with a virtual machine that has all of the
-required software installed.
-
-Otherwise, to complete the exercises, you will need to clone two p4lang Github repositories
-and install their dependencies. To clonde the repositories:
+To complete the exercises, you will need to clone two p4lang Github repositories
+and install their dependencies. To clone the repositories:
 
 - `git clone https://github.com/p4lang/behavioral-model.git bmv2`
 - `git clone https://github.com/p4lang/p4c-bm.git p4c-bmv2`
