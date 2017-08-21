@@ -11,6 +11,7 @@ from scapy.all import sendp, send, srp1
 from scapy.all import Packet, hexdump
 from scapy.all import Ether, StrFixedLenField, XByteField, IntField
 from scapy.all import bind_layers
+import readline
 
 class P4calc(Packet):
     name = "P4calc"
@@ -76,8 +77,9 @@ def main():
             pkt = Ether(dst='00:04:00:00:00:00', type=0x1234) / P4calc(op=ts[1].value,
                                               operand_a=int(ts[0].value),
                                               operand_b=int(ts[2].value))
+            pkt = pkt/' '
 
-            #pkt.show()
+#            pkt.show()
             resp = srp1(pkt, iface=iface, timeout=1, verbose=False)
             if resp:
                 p4calc=resp[P4calc]
