@@ -63,7 +63,7 @@ Therefore, if we capture packets at `h2`, we should see the right ecn value.
    The message "P4 is cool" should be received in `h2`'s xterm,
 6. In `h11`'s xterm, start iperf client sending for 15 seconds
    ```bash
-   h11 iperf -c h22 -t 15 -u
+   iperf -c 10.0.2.22 -t 15 -u
    ```
 7. At `h2`, the `ipv4.tos` field (diffserv+ecn) is always 1
 8. type `exit` to close each xterm window
@@ -97,7 +97,7 @@ A complete `ecn.p4` will contain the following components:
 	2. Update the ethernet destination address with the address of the next hop. 
 	3. Update the ethernet source address with the address of the switch. 
 	4. Decrement the TTL.
-5. An egress control block that checks the ECN and `enq_qdepth`
+5. An egress control block that checks the ECN and `standard_metadata.enq_qdepth`
 and sets the ipv4.ecn.
 6. A deparser that selects the order in which fields inserted into the outgoing
    packet.
