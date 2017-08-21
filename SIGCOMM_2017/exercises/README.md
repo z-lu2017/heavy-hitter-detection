@@ -17,7 +17,7 @@ programming, organized into four modules:
 
 3. Stacks
 * [Source Routing](./source_routing)
-* [Calculator](./calculator)
+* [Calculator](./calc)
 
 4. Load Balancing 
 * [ECMP](./ecmp)
