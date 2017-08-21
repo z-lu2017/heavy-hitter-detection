@@ -63,7 +63,7 @@ Therefore, if we capture packets at `h2`, we should see the right ecn value.
    The message "P4 is cool" should be received in `h2`'s xterm,
 6. In `h11`'s xterm, start iperf client sending for 15 seconds
    ```bash
-   h11 iperf -c h22 -t 15 -u
+   iperf -c 10.0.2.22 -t 15 -u
    ```
 7. At `h2`, the `ipv4.tos` field (diffserv+ecn) is always 1
 8. type `exit` to close each xterm window
