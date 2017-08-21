@@ -36,9 +36,9 @@ To build the virtual machine:
 - Install [Vagrant](https://vagrantup.com) and [VirtualBox](https://virtualbox.org)
 - `cd vm`
 - `vagrant up`
-- Log in with username `p4` and password `p4` and issue the command `sudo shutdown -r now`
-- When the machine reboots, you should have a graphical desktop machine with the required software pre-installed.
-
+- Log in with username `p4` and password `p4`
+- Reboot the machine by issuing the command `sudo shutdown -r now`
+- When the machine restarts, you should have a graphical desktop machine with all required software pre-installed.
 
 To clone the repositories:
 
