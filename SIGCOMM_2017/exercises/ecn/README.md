@@ -102,8 +102,13 @@ A complete `ecn.p4` will contain the following components:
            the next hop.
 	3. Update the ethernet source address with the address of the switch. 
 	4. Decrement the TTL.
+<<<<<<< HEAD
 5. An egress control block that checks the ECN and `enq_qdepth`
    and sets the ipv4.ecn.
+=======
+5. An egress control block that checks the ECN and `standard_metadata.enq_qdepth`
+and sets the ipv4.ecn.
+>>>>>>> 745e0a4f5a23e4908ed76edc0d108d171dfb07ae
 6. A deparser that selects the order in which fields inserted into the outgoing
    packet.
 7. A `package` instantiation supplied with the parser, control,

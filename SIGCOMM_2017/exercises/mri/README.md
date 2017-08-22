@@ -23,7 +23,7 @@ only need to implement the data plane logic of your P4 program.
 
 The directory with this README also contains a skeleton P4 program,
 `mri.p4`, which initially implements L3 forwarding. Your job (in the
-next step) will be to extend it to properly append the MRI custom
+next step) will be to extend it to properly prepend the MRI custom
 headers.
 
 Before that, let's compile the incomplete `mri.p4` and bring up a
@@ -72,7 +72,7 @@ switch in Mininet to test its behavior.
    The message "P4 is cool" should be received in `h2`'s xterm,
 6. In `h11`'s xterm, start iperf client sending for 15 seconds
    ```bash
-   h11 iperf -c 10.0.2.22 -t 15 -u
+   iperf -c 10.0.2.22 -t 15 -u
    ```
 7. At `h2`, the MRI header has no hop info (`count=0`)
 8. type `exit` to close each xterm window
@@ -104,7 +104,7 @@ missing piece.
 MRI will require two custom headers. The first header, `mri_t`,
 contains a single field `count`, which indicates the number of switch
 IDs that follow. The second header, `switch_t`, contains switch ID and
-Queue depth fields.
+Queue depth fields of each switch hop the packet goes through.
 
 One of the biggest challenges in implementing MRI is handling the
 recursive logic for parsing these two headers. We will use a

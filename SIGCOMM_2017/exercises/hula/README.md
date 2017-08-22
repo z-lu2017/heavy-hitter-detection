@@ -2,6 +2,7 @@
 
 ## Introduction
 
+<<<<<<< HEAD
 The objective of this tutorial is to implement a simplified version of
 [HULA](http://web.mit.edu/anirudh/www/hula-sosr16.pdf). In contrast to
 ECMP, which selects the next hop randomly, HULA load balances the
@@ -55,6 +56,52 @@ Here is how HULA works:
     order to avoid packet re-ordering and path oscilation during
     updating next hops.
   - Otherwise just use the next hop.
+=======
+The objective of this tutorial is to implement a simplified version of 
+[Hula](http://web.mit.edu/anirudh/www/hula-sosr16.pdf).
+In contrast to ECMP, which selects the next hop randomly, Hula load balances
+the flows over multiple paths to a destination ToR based on queue occupancy
+of switches in each path. Thus, it can use the whole bisection bandwidth.
+To keep the example simple, we implement it on top of source routing exercise.
+
+Here is how Hula works:
+- Each ToR switch generates a HULA packet to each other ToR switch
+  to probe the condition of every path between the source and the destination ToR.
+  The HULA packets are forwarded to the destination ToR (forward path) and may come back to 
+  the source ToR (reverse path) if the best path from the source to the destination changes.
+  The packets include a HULA header and a list of ports for source routing. 
+  We describe the elements of HULA header later.
+  The source routing port list has the ports for going to the distination ToR
+  on the specific path and then returning back to the source ToR (on the same path).
+- In the forward path:
+  - Each hop updates the queue length field in the hula header at egress if it is smaller than
+   observed queue length at that switch. Thus when the packet reaches the destination
+   ToR, queue length field will be the maximum observed queue length.
+  - At destination ToR, 
+    1. find the queue length of current best path from the source ToR
+    2. if the new path is better, update the queue length and best path and return
+     the HULA packet to the source path. This is done by setting the direction field
+     in the HULA header and returning the packet to the ingress port.
+    3. if the packet came from the current best path, just update the value.
+     This is to know if the best path got worse and allows other paths to replace it later.
+     It is inefficient to save the whole path and compare it in the data plane.
+     Instead, we keep a 32 bit digest of path in the HULA header. Each destination ToR,
+     only saves and compares the digest of the best path along with its queue length.
+     The `hula.digest` field is set by source ToR upon creating the HULA packet
+     and does not change along the path.
+- In the reverse path:
+  - Each hop will update the "routing next hop" to the destination ToR based on the port
+   it received the HULA packet on (as it was the best path). Then it forwards the packet
+   to next hop in reverse path based on source routing.
+  - Source ToR also drops the packet.
+- Now for each data packet,
+  - Each hop hashes the flow header fields and looks into a "flow table".
+  - If it doesn't find the next hop for the flow, looks for "routing next hop" to 
+    find the next hop for destination ToR. We assume each ToR serves a /24 IP address.
+    The switch also updates the "flow table". "flow table" prevents the path for a flow from changing
+    in order to avoid packet re-ordering and path oscilation during updating next hops.
+  - Otherwise, each hop just use the next hop.
+>>>>>>> 745e0a4f5a23e4908ed76edc0d108d171dfb07ae
 
 Your switch will have multiple tables, which the control plane will
 populate with static rules. We have already defined the control plane
@@ -68,8 +115,12 @@ program.
 
 The directory with this README also contains a skeleton P4 program,
 `hula.p4`, which initially drops all packets.  Your job (in the next
+<<<<<<< HEAD
 step) will be to extend it to properly update HULA packets and forward
 data packets.
+=======
+step) will be to extend it to properly update HULA packets and forward data packets.
+>>>>>>> 745e0a4f5a23e4908ed76edc0d108d171dfb07ae
 
 Before that, let's compile the incomplete `hula.p4` and bring up a
 switch in Mininet to test its behavior.
@@ -137,6 +188,7 @@ A complete `hula.p4` will contain the following components:
   - `dstindex_nhop_reg`: At each hop, saves the next hop to reach each
     destination ToR
   - `flow_port_reg`: At each hop saves the next hop for each flow
+<<<<<<< HEAD
 4. `hula_fwd table`: looks at destination IP of HULA packets. If it is
    the destination ToR, it runs `hula_dst` action to set `meta.index`
    field based on source IP (source ToR).  The index is used later to
@@ -158,10 +210,29 @@ A complete `hula.p4` will contain the following components:
 9. An apply block that has the following logic:
   * If the packet has HULA header
     * On the forward path (`hdr.hula.dir==0`):
+=======
+4. `hula_fwd table`: looks at the destination IP of a HULA packet. If it is the destination ToR,
+   it runs `hula_dst` action to set `meta.index` field based on source IP (source ToR).
+   The index is used later to find queue depth and digest of current best path from that source ToR.
+   Otherwise, this table just runs `srcRoute_nhop` to perform source routing.
+5. `hula_bwd` table: at revere path, updates next hop to the destination ToR using `hula_set_nhop`
+action. The action updates `dstindex_nhop_reg` register.
+6. `hula_src` table just checks the source IP address of a HULA packet in reverse path.
+   if this switch is the source, this is the end of reverse path, thus drop the packet.
+   Otherwise use `srcRoute_nhop` action to continue source routing in the reverse path.
+7. `hula_nhop` table for data packets, reads destination IP/24 to get an index.
+   It uses the index to read `dstindex_nhop_reg` register and get best next hop to the 
+   destination ToR.
+8. dmac table just updates ethernet destination address based on next hop.
+9. An apply block that has the following logic:
+  * If the packet has a HULA header
+    * In forward path (`hdr.hula.dir==0`):
+>>>>>>> 745e0a4f5a23e4908ed76edc0d108d171dfb07ae
       * Apply `hula_fwd` table to check if it is the destination ToR or not
       * If this switch is the destination ToR (`hula_dst` action ran and 
       set the `meta.index` based on the source IP address):
         * read `srcindex_qdepth_reg` for the queue length of
+<<<<<<< HEAD
           the current best path from the source ToR
         * If the new queue length is better, update the entry in
 	  `srcindex_qdepth_reg` and save the path digest in
@@ -175,6 +246,18 @@ A complete `hula.p4` will contain the following components:
       * apply `hula_bwd` to update the HULA next hop to the destination ToR
       * apply `hula_src` table to drop the packet if it is the source ToR of
         the HULA packet
+=======
+       the current best path from the source ToR
+        * If the new queue length is better, update the entry in `srcindex_qdepth_reg` and
+       save the path digest in `srcindex_digest_reg`. Then return the HULA packet to the source ToR
+       by sending to its ingress port and setting `hula.dir=1` (reverse path)
+      * else, if this HULA packet came through current best path (`hula.digest` is equal to 
+       the value in `srcindex_digest_reg`), update its queue length in `srcindex_qdepth_reg`.
+       In this case we don't need to send the HULA packet back, thus drop the packet.
+    * in backward path (`hdr.hula.dir==1`):
+      * apply `hula_bwd` to update the HULA next hop to the destination ToR
+      * apply `hula_src` table to drop the packet if it is the source ToR of the HULA packet
+>>>>>>> 745e0a4f5a23e4908ed76edc0d108d171dfb07ae
   * If it is a data packet
     * Compute the hash of flow
     * **TODO** read nexthop port from `flow_port_reg` into a temporary variable,
@@ -209,11 +292,20 @@ on all paths.
 3. run `h1 ping h2`. The ping should work if you have completed the
 ingress control block
  
+<<<<<<< HEAD
 Now we are going to test a more complex scenario.  We send two iperf
 traffic to `h3` from `h1` and `h2` But without sending HULA packets,
 they will both use the same spine switch and as spine links have only
 1mbps, they must share bandwidth, thus each can reach only 512kbps.
 We test if with HULA, both iperf can reach 1mbps.
+=======
+Now we are going to test a more complex scenario.
+We send two iperf traffic to `h3` from `h1` and `h2`
+But without sending HULA packets,
+they will both use the same spine switch and as spine links
+have only 1mbps, they must share bandwidth, thus each can reach only 512kbps.
+With HULA both iperf sessions can reach 1mbps.
+>>>>>>> 745e0a4f5a23e4908ed76edc0d108d171dfb07ae
 
 1. open a terminal window on `h1`, `h2` and `h3`:
 ```bash
@@ -253,10 +345,16 @@ iperf -c 10.0.3.3 -t 30 -u -b 2m
 ```bash
 ./send.py
 ```
+<<<<<<< HEAD
 This should let `s3` to know that the current chosen path has large
 queue length.  But because of the path is congested, it will reach
 after updates from other paths.  Let's send HULA packets again so that
 the better path can replace current path.
+=======
+This should let `s3` to know that the current chosen path has large queue length.
+But because of the path is congested, it will reach after updates from other paths.
+Let's send HULA packets again so that the better path can replace current path.
+>>>>>>> 745e0a4f5a23e4908ed76edc0d108d171dfb07ae
 ```bash
 ./send.py
 ```
@@ -270,12 +368,19 @@ iperf -c 10.0.3.3 -t 30 -u -b 2m
 Both iperf should reach 1mbps now.
 
 ### Food for thought
+<<<<<<< HEAD
 * How can we implement flowlet routing say based on the timestamp of
   packets
 * In the ingress control logic, the destination ToR always sends a
   HULA packet back on the reverse path if the queue length is
   better. But this is not necessary if it came from the best path. Can
   you improve the code?
+=======
+* how can we implement flowlet routing say based on the timestamp of packets
+* in the ingress control logic, the destination ToR always sends a HULA packet 
+back on the reverse path if the queue length is better. But this is not necessary
+if it came from the best path. Can you improve the code?
+>>>>>>> 745e0a4f5a23e4908ed76edc0d108d171dfb07ae
 
 ### Troubleshooting
 

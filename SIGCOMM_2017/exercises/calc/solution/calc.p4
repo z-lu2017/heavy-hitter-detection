@@ -64,7 +64,11 @@ const bit<8>  P4CALC_VER   = 0x01;   // v0.1
 const bit<8>  P4CALC_PLUS  = 0x2b;   // '+'
 const bit<8>  P4CALC_MINUS = 0x2d;   // '-'
 const bit<8>  P4CALC_AND   = 0x26;   // '&'
+<<<<<<< HEAD
 const bit<8>  P4CALC_OR    = 0x7c;   // '|'
+=======
+const bit<8>  P4CALC_OR    = 0x7e;   // '|'
+>>>>>>> 745e0a4f5a23e4908ed76edc0d108d171dfb07ae
 const bit<8>  P4CALC_CARET = 0x5e;   // '^'
 
 header p4calc_t {

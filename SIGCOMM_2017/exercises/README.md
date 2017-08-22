@@ -8,7 +8,7 @@ We've prepared a set of exercises to help you get started with P4
 programming, organized into four modules:
 
 1. Basics
-* [Forwarding](./forwarding)
+* [Forwarding](./basic)
 * [Scrambler](./scrambler)
 
 2. Monitoring
@@ -17,7 +17,7 @@ programming, organized into four modules:
 
 3. Stacks
 * [Source Routing](./source_routing)
-* [Calculator](./calculator)
+* [Calculator](./calc)
 
 4. Load Balancing 
 * [ECMP](./ecmp)
