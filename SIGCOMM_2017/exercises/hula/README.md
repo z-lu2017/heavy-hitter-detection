@@ -177,7 +177,7 @@ action. The action updates `dstindex_nhop_reg` register.
 1. Run Mininet same as Step 1
 2. From the Mininet command line run
 ```bash
-s1 ./send.py
+s1 ./generatehula.py
 ```
 to send HULA packets from all ToR switches (`s1`, `s2` and `s3`) to each other
 on all paths.
@@ -211,9 +211,9 @@ Wait for them to finish. Look at the window in `h3`.
 Although there are two paths to `h3`,
 both `h1` and `h2` use the same path and aggregate bandwidth <= 1mbps
 
-Now lets redo the test, but before step 4 we will run `send.py` twice.
+Now lets redo the test, but before step 4 we will run `generatehula.py` twice.
 1. open a terminal window on `h1`, `h2` and `h3`. If you have closed mininet,
-you need to run `send.py` first, to setup initial routes:
+you need to run `generatehula.py` first, to setup initial routes:
 ```bash
 xterm h1 h2 h3
 ```
@@ -227,15 +227,15 @@ iperf -c 10.0.3.3 -t 30 -u -b 2m
 ```
 4. in mininet command window run
 ```bash
-./send.py
+./generatehula.py
 ```
 This should let `s3` to know that the current chosen path has large queue length.
 But because of the path is congested, it will reach after updates from other paths.
 Let's send HULA packets again so that the better path can replace current path.
 ```bash
-./send.py
+./generatehula.py
 ```
-Alternatively, you can force `send.py` to run every five seconds by passing `5` as
+Alternatively, you can force `generatehula.py` to run every five seconds by passing `5` as
 an argument.
 
 5. run iperf client in `h2`
