@@ -1,9 +1,10 @@
-# Implementing L3 Forwarding
+# Implementing Basic Forwarding
 
 ## Introduction
 
-The objective of this tutorial is to implement basic L3 forwarding. To
-keep the exercise small, we will just implement forwarding for IPv4.
+The objective of this exercise is to write a P4 program that
+implements basic forwarding. To keep things simple, we will just
+implement forwarding for IPv4.
 
 With IPv4 forwarding, the switch must perform the following actions
 for every packet: (i) update the source and destination MAC addresses,
@@ -23,8 +24,8 @@ logic of your P4 program.
 ## Step 1: Run the (incomplete) starter code
 
 The directory with this README also contains a skeleton P4 program,
-`ipv4_forward.p4`, which initially drops all packets.  Your job (in
-the next step) is extend it to properly forward IPv4 packets.
+`basic.p4`, which initially drops all packets. Your job will be to
+extend this skeleton program to properly forward IPv4 packets.
 
 Before that, let's compile the incomplete `ip4v_forward.p4` and bring
 up a switch in Mininet to test its behavior.
@@ -38,15 +39,15 @@ up a switch in Mininet to test its behavior.
    * start a Mininet instance with three switches (`s1`, `s2`, `s3`)
      configured in a triangle, each connected to one host (`h1`, `h2`,
      and `h3`).
-   * The hosts are assigned IPs of `10.0.1.10`, `10.0.2.10`, etc.
+   * The hosts are assigned IPs of `10.0.1.1`, `10.0.2.2`, etc.
 
-2. You should now see a Mininet command prompt.  Open two terminals
+2. You should now see a Mininet command prompt. Open two terminals
 for `h1` and `h2`, respectively:
    ```bash
    mininet> xterm h1 h2
    ```
 3. Each host includes a small Python-based messaging client and
-server.  In `h2`'s xterm, start the server:
+server. In `h2`'s xterm, start the server:
    ```bash
    ./receive.py
    ```
@@ -71,57 +72,56 @@ the control plane as part of the rule.
 In this exercise, we have already implemented the the control plane
 logic for you. As part of bringing up the Mininet instance, the
 `run.sh` script will install packet-processing rules in the tables of
-each switch.  These are defined in the files `s1-commands.txt` through
-`s3-commands.txt`.
+each switch. These are defined in the `sX-commands.txt` files, where
+`X` corresponds to the switch number.
 
 **Important:** A P4 program also defines the interface between the
-switch pipeline and control plane.  The commands in the files
-`s1-commands.txt` through `s3-commands.txt` refer to specific tables,
-keys, and actions by name, and any changes in the P4 program that add
-or rename tables, keys, or actions will need to be reflected in these
-command files.
+switch pipeline and control plane. The commands in the files
+`sX-commands.txt` refer to specific tables, keys, and actions by name,
+and any changes in the P4 program that add or rename tables, keys, or
+actions will need to be reflected in these command files.
 
 ## Step 2: Implement L3 forwarding
 
-The `ipv4_forward.p4` file contains a skeleton P4 program with key
-pieces of logic replaced by `TODO` comments. Your implementation
-should follow the structure given in this file---replace each `TODO`
-with logic implementing the missing piece.
+The `basic.p4` file contains a skeleton P4 program with key pieces of
+logic replaced by `TODO` comments. Your implementation should follow
+the structure given in this file---replace each `TODO` with logic
+implementing the missing piece.
 
-A complete `ipv4_forward.p4` will contain the following components:
+A complete `basic.p4` will contain the following components:
 
 1. Header type definitions for Ethernet (`ethernet_t`) and IPv4 (`ipv4_t`).
 2. **TODO:** Parsers for Ethernet and IPv4 that populate `ethernet_t` and `ipv4_t` fields.
 3. An action to drop a packet, using `mark_to_drop()`.
-4. **TODO:** An action (called `ipv4_forward`) that:
+4. **TODO:** An action (called `basic`) that:
 	1. Sets the egress port for the next hop. 
 	2. Updates the ethernet destination address with the address of the next hop. 
 	3. Updates the ethernet source address with the address of the switch. 
 	4. Decrements the TTL.
 5. **TODO:** A control that:
     1. Defines a table that will read an IPv4 destination address, and
-       invoke either `drop` or `ipv4_forward`.
-    2. An `apply` block that applies the table.    
+       invoke either `drop` or `basic`.
+    2. An `apply` block that applies the table.   
 6. A deparser that selects the order in which fields inserted into the outgoing
    packet.
 7. A `package` instantiation supplied with the parser, control, and deparser.
     > In general, a package also requires instances of checksum verification
-    > and recomputation controls.  These are not necessary for this tutorial
+    > and recomputation controls. These are not necessary for this tutorial
     > and are replaced with instantiations of empty controls.
 
 ## Step 3: Run your solution
 
-Follow the instructions from Step 1.  This time, your message from
+Follow the instructions from Step 1. This time, your message from
 `h1` should be delivered to `h2`.
 
 ### Food for thought
 
 The "test suite" for your solution---sending a message from `h1` to
-`h2`---is not very robust.  What else should you test to be confident
+`h2`---is not very robust. What else should you test to be confident
 of your implementation?
 
 > Although the Python `scapy` library is outside the scope of this tutorial,
-> it can be used to generate packets for testing.  The `send.py` file shows how
+> it can be used to generate packets for testing. The `send.py` file shows how
 > to use it.
 
 Other questions to consider:
@@ -132,25 +132,25 @@ Other questions to consider:
 
 There are several problems that might manifest as you develop your program:
 
-1. `ipv4_forward.p4` might fails to compile.  In this case, `run.sh`
-will report the error emitted from the compiler and halt.
+1. `basic.p4` might fails to compile. In this case, `run.sh` will
+report the error emitted from the compiler and halt.
 
-2. `ipv4_forward.p4` might compile but fail to support the control
-plane rules in the `s1-commands.txt` through `s3-command.txt` files
-that `run.sh` tries to install using the Bmv2 CLI.  In this case,
-`run.sh` will report these errors to `stderr`.  Use these error
-messages to fix your `ipv4_forward.p4` implementation.
+2. `basic.p4` might compile but fail to support the control plane
+rules in the `s1-commands.txt` through `s3-command.txt` files that
+`run.sh` tries to install using the Bmv2 CLI. In this case, `run.sh`
+will report these errors to `stderr`. Use these error messages to fix
+your `basic.p4` implementation.
 
-3. `ipv4_forward.p4` might compile, and the control plane rules might
-be installed, but the switch might not process packets in the desired
+3. `basic.p4` might compile, and the control plane rules might be
+installed, but the switch might not process packets in the desired
 way. The `build/logs/<switch-name>.log` files contain detailed logs
-that describing how each switch processes each packet.  The output is
+that describing how each switch processes each packet. The output is
 detailed and can help pinpoint logic errors in your implementation.
 
 #### Cleaning up Mininet
 
 In the latter two cases above, `run.sh` may leave a Mininet instance
-running in the background.  Use the following command to clean up
+running in the background. Use the following command to clean up
 these instances:
 
 ```bash

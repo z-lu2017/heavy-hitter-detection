@@ -89,9 +89,18 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
         mark_to_drop();
     }
 
+    action flip_ethernet() {
+      hdr.ethernet.srcAddr = ~hdr.ethernet.srcAddr;
+      hdr.ethernet.dstAddr = ~hdr.ethernet.dstAddr;
+    }
+    action flip_ipv4() {
+      hdr.ipv4.srcAddr = ~hdr.ipv4.srcAddr;
+      hdr.ipv4.dstAddr = ~hdr.ipv4.dstAddr;
+    }
+
     action flip() {
-        /* TODO: add code to flip bits in Ethernet and IPv4 addresses. */
-	
+      flip_ethernet();
+      flip_ipv4();
     }
 
     action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
