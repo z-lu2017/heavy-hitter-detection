@@ -4,7 +4,7 @@
     "targets": {
 	"mininet": {
 	    "num-hosts": 2,
-	    "switch-config": "simple_router.config"
+	    "switch-config": "calc.config"
 	}
     }
 }
