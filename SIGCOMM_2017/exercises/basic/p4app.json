@@ -1,5 +1,5 @@
 {
-    "program": "ipv4_forward.p4",
+    "program": "basic.p4",
     "language": "p4-16",
     "targets": {
       "multiswitch": {
