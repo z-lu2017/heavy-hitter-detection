@@ -1,6 +1,0 @@
-table_set_default ecmp_group drop
-table_add ecmp_group set_ecmp_select 10.0.0.1/32 => 0 2
-table_add ecmp_nhop set_nhop 0 => 10.0.1.2 2
-table_add ecmp_nhop set_nhop 1 => 10.0.1.3 3
-table_add forward set_dmac 10.0.1.2 => 00:04:00:01:00:02
-table_add forward set_dmac 10.0.1.3 => 00:04:00:01:00:03

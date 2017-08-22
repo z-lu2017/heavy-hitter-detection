@@ -109,4 +109,4 @@ correct result:
 ## Next Steps
 
 Congratulations, your implementation works!  Move on to
-[ECMP](../ecmp).
+[Load Balancer](../load_balance).
