@@ -1,5 +1,5 @@
 {
-    "program": "ecmp.p4",
+    "program": "load_balance.p4",
     "language": "p4-16",
     "targets": {
       "multiswitch": {
