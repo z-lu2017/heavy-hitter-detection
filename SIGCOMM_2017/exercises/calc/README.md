@@ -14,7 +14,6 @@ The directory with this README also contains a skeleton P4 program,
 `calc.p4`, which initially drops all packets.  Your job will be to
 extend it to properly implement the calculator logic.
 
-
 As a first step, compile the incomplete `calc.p4` and bring up a
 switch in Mininet to test its behavior.
 
@@ -24,13 +23,14 @@ switch in Mininet to test its behavior.
    ```
    This will:
    * compile `calc.p4`, and
-   * start a Mininet instance with one switches (`s1`) connected to two hosts (`h1`, `h2`).
-   * The hosts are assigned IPs of `10.0.1.10` and `10.0.2.10`.
+  
+   * start a Mininet instance with one switches (`s1`) connected to
+     two hosts (`h1`, `h2`).
+   * The hosts are assigned IPs of `10.0.1.1` and `10.0.2.2`.
 
-
-2. We've written a small Python-based driver program that will allow you
-to test your calculator. You can run the driver program directly from the
-Mininet command prompt:
+2. We've written a small Python-based driver program that will allow
+you to test your calculator. You can run the driver program directly
+from the Mininet command prompt:
 
 ```
 mininet> h1 python calc.py 
@@ -38,19 +38,18 @@ mininet> h1 python calc.py
 ```
 
 3. The driver program will provide a new prompt, at which you can type
-basic expressions. The test harness will parse your expression, and prepare
-a packet with the corresponding operator and operands. It will then send a packet
-to the switch for evaluation. When the switch returns the result of the computation,
-the test program will print the result. However, because the calculator program
-is not implemented, you should see an error message.
+basic expressions. The test harness will parse your expression, and
+prepare a packet with the corresponding operator and operands. It will
+then send a packet to the switch for evaluation. When the switch
+returns the result of the computation, the test program will print the
+result. However, because the calculator program is not implemented,
+you should see an error message.
 
 ```
 > 1+1
 Didn't receive response
 >
 ```
-
-
 
 ## Step 2: Implement Calculator
 
@@ -61,7 +60,6 @@ return the packet to the sender.
 
 We will use the following header format:
 
- 
              0                1                  2              3
       +----------------+----------------+----------------+---------------+
       |      P         |       4        |     Version    |     Op        |
@@ -85,19 +83,17 @@ We will use the following header format:
  -   '^' (0x5e) Result = OperandA ^ OperandB
  
 
-We will assume that the calculator header is carried over Ethernet, and
-we will use the Ethernet type 0x1234 to indicate the presence of the header.
+We will assume that the calculator header is carried over Ethernet,
+and we will use the Ethernet type 0x1234 to indicate the presence of
+the header.
 
-
-Given what you have learned so far, your task is to implement the
-P4 calculator program. There is no control plane logic, so you need
-only worry about the data plane implementation.
-
+Given what you have learned so far, your task is to implement the P4
+calculator program. There is no control plane logic, so you need only
+worry about the data plane implementation.
 
 A working calculator implementation will parse the custom headers,
-execute the mathematical operation, write the result in the result field,
-and return the packet to the sender.
-
+execute the mathematical operation, write the result in the result
+field, and return the packet to the sender.
 
 ## Step 3: Run your solution
 
@@ -110,6 +106,7 @@ correct result:
 >
 ```
 
-If all of this works well. Congratulations! You have finished this
-tutorial.
+## Next Steps
 
+Congratulations, your implementation works!  Move on to
+[ECMP](../ecmp).
