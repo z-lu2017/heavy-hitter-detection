@@ -51,9 +51,9 @@ server. In `h2`'s xterm, start the server:
    ```bash
    ./receive.py
    ```
-4. In `h1`'s xterm, send a message from the client:
+4. In `h1`'s xterm, send a message to `h2`:
    ```bash
-   ./send.py 10.0.2.10 "P4 is cool"
+   ./send.py 10.0.2.2 "P4 is cool"
    ```
    The message will not be received.
 5. Type `exit` to leave each xterm and the Mininet command line.
