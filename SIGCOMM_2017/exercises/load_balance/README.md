@@ -1,4 +1,4 @@
-# Load Balanging 
+# Load Balancing 
 
 In this exercise, you will implement a form of load balancing based on
 a single version of Equal-Cost Multipath Forwarding. The switch you
@@ -34,8 +34,8 @@ up a switch in Mininet to test its behavior.
    * We use the IP address 10.0.0.1 to indicate traffic that should be
      load balanced between `h2` and `h3`.
 
-2. You should now see a Mininet command prompt.  Open two terminals
-   for `h1` and `h2`, respectively:
+2. You should now see a Mininet command prompt.  Open three terminals
+   for `h1`, `h2` and `h3`, respectively:
    ```bash
    mininet> xterm h1 h2 h3
    ```   
