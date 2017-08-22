@@ -20,7 +20,6 @@ class AppTopo(Topo):
         for host_name in host_names:
             host_num = int(host_name[1:])
 
-
             self.addHost(host_name)
 
             self._host_links[host_name] = {}
@@ -32,8 +31,7 @@ class AppTopo(Topo):
                 sw_num = int(sw[1:])
                 assert sw[0]=='s', "Hosts should be connected to switches, not " + str(sw)
                 host_ip = "10.0.%d.%d" % (sw_num, host_num)
-                host_mac = '00:04:00:%02x:00:%02x' % (sw_num, host_num)
-
+                host_mac = '00:00:00:00:%02x:%02x' % (sw_num, host_num)
                 delay_key = ''.join([host_name, sw])
                 delay = latencies[delay_key] if delay_key in latencies else '0ms'
                 bw = bws[delay_key] if delay_key in bws else None
@@ -43,7 +41,7 @@ class AppTopo(Topo):
                         host_mac = host_mac,
                         host_ip = host_ip,
                         sw = sw,
-                        sw_mac = "00:aa:00:%02x:00:%02x" % (sw_num, host_num),
+                        sw_mac = "00:00:00:00:%02x:%02x" % (sw_num, host_num),
                         sw_ip = "10.0.%d.%d" % (sw_num, 254),
                         sw_port = sw_ports[sw].index(host_name)+1
                         )
@@ -64,8 +62,8 @@ class AppTopo(Topo):
             sw_ports[sw2].append(sw1)
 
             sw1_num, sw2_num = int(sw1[1:]), int(sw2[1:])
-            sw1_port = dict(mac="00:aa:00:%02x:%02x:00" % (sw1_num, sw2_num), port=sw_ports[sw1].index(sw2)+1)
-            sw2_port = dict(mac="00:aa:00:%02x:%02x:00" % (sw2_num, sw1_num), port=sw_ports[sw2].index(sw1)+1)
+            sw1_port = dict(mac="00:00:00:%02x:%02x:00" % (sw1_num, sw2_num), port=sw_ports[sw1].index(sw2)+1)
+            sw2_port = dict(mac="00:00:00:%02x:%02x:00" % (sw2_num, sw1_num), port=sw_ports[sw2].index(sw1)+1)
 
             self._sw_links[sw1][sw2] = [sw1_port, sw2_port]
             self._sw_links[sw2][sw1] = [sw2_port, sw1_port]
