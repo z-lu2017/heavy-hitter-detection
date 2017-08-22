@@ -221,6 +221,7 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
         * - If hdr.mri is valid:
         *   - Apply table swtrace
         */
+	swtrace.apply();
     }
 }
 
