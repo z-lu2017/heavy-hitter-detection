@@ -7,20 +7,20 @@ Welcome to the P4 Tutorial!
 We've prepared a set of exercises to help you get started with P4
 programming, organized into four modules:
 
-1. Basics
-* [Forwarding](./basic)
+1. Introduction
+* [Basic Forwarding](./basic)
 * [Scrambler](./scrambler)
 
-2. Monitoring
+2. Monitoring and Debugging
 * [Explicit Congestion Notification](./ecn)
 * [Multi-Hop Route Inspection](./mri)
 
-3. Stacks
+3. Advanced Data Structures
 * [Source Routing](./source_routing)
 * [Calculator](./calc)
 
-4. Load Balancing 
-* [ECMP](./ecmp)
+4. Dynamic Behavior
+* [Load Balancing](./load_balance)
 * [HULA](./hula)
 
 ## Obtaining required software
