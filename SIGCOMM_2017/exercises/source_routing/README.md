@@ -2,32 +2,32 @@
 
 ## Introduction
 
-The objective of this tutorial is to implement source routing. 
-With source routing, the source host guides each switch in the network
-to send the packet to a specific port. The host puts a stack of
-output ports in the packet. In this example, we just put the stack after
-Ethernet header and select a special etherType to indicate that.
-Each switch pops an item from the stack and forwards the packet
-according to the specified port number.
+The objective of this exercise is to implement source routing.  With
+source routing, the source host guides each switch in the network to
+send the packet to a specific port. The host puts a stack of output
+ports in the packet. In this example, we just put the stack after
+Ethernet header and select a special etherType to indicate that.  Each
+switch pops an item from the stack and forwards the packet according
+to the specified port number.
 
-Your switch must parse the source routing stack. Each item has a bos (bottom of stack) 
-bit and a port number. The bos bit is 1 only for the last entry of stack.
-Then at ingress, it should pop an entry from the stack and set the egress port
-accordingly.
-Note that the last hop can also revert back the etherType to `TYPE_IPV4`.
+Your switch must parse the source routing stack. Each item has a bos
+(bottom of stack) bit and a port number. The bos bit is 1 only for the
+last entry of stack.  Then at ingress, it should pop an entry from the
+stack and set the egress port accordingly.  Note that the last hop can
+also revert back the etherType to `TYPE_IPV4`.
 
 > **Spoiler alert:** There is a reference solution in the `solution`
-> sub-directory. Feel free to compare your implementation to the reference.
-
+> sub-directory. Feel free to compare your implementation to the
+> reference.
 
 ## Step 1: Run the (incomplete) starter code
 
 The directory with this README also contains a skeleton P4 program,
-`source_routing.p4`, which initially drops all packets. Your job (in the next
-step) will be to extend it to properly to route packets.
+`source_routing.p4`, which initially drops all packets. Your job (in
+the next step) will be to extend it to properly to route packets.
 
-Before that, let's compile the incomplete `source_routing.p4` and bring up a
-network in Mininet to test its behavior.
+Before that, let's compile the incomplete `source_routing.p4` and
+bring up a network in Mininet to test its behavior.
 
 1. In your shell, run:
    ```bash
@@ -39,13 +39,16 @@ network in Mininet to test its behavior.
      in a triangle, each connected to one host (`h1`, `h2`, `h3`).
      Check the network topology using the `net` command in mininet.
      You can also change the topology in p4app.json
-   * The hosts are assigned IPs of `10.0.1.1`, `10.0.2.2`, etc (`10.0.<Switchid>.<hostID>`).
+   * The hosts are assigned IPs of `10.0.1.1`, `10.0.2.2`, etc
+     (`10.0.<Switchid>.<hostID>`).
 
-2. You should now see a Mininet command prompt. Open two terminals for `h1` and `h2`, respectively:
+2. You should now see a Mininet command prompt. Open two terminals for
+   `h1` and `h2`, respectively:
    ```bash
    mininet> xterm h1 h2
    ```
-3. Each host includes a small Python-based messaging client and server. In `h2`'s xterm, start the server:
+3. Each host includes a small Python-based messaging client and
+   server. In `h2`'s xterm, start the server:
    ```bash
    ./receive.py
    ```
@@ -53,26 +56,32 @@ network in Mininet to test its behavior.
    ```bash
    ./send.py 10.0.2.2
    ```
-5. Type a list of port numbers. say `2 3 2 2 1`.
-   This should send the packet through h1, s1, s2, s3, s1, s2. h2.
-   However, h2 will not receive the message.
-5. Type `q` to exit send.py and type `exit` to leave each xterm and the Mininet command line.
+
+5. Type a list of port numbers. say `2 3 2 2 1`.  This should send the
+   packet through `h1`, `s1`, `s2`, `s3`, `s1`, `s2`, and
+   `h2`. However, `h2` will not receive the message.
+   
+6. Type `q` to exit send.py and type `exit` to leave each xterm and
+   the Mininet command line.
 
 The message was not received because each switch is programmed with
-`source_routing.p4`, which drops all packets on arrival.
- You can verify this by looking at `build/logs/s1.log`.  
- Your job is to extend the p4 code.
+`source_routing.p4`, which drops all packets on arrival.  You can
+verify this by looking at `build/logs/s1.log`.  Your job is to extend
+the P4 code so packets are delivered to their destination.
 
 ## Step 2: Implement source routing
 
-The `source_routing.p4` file contains a skeleton P4 program with key pieces of
-logic replaced by `TODO` comments.  These should guide your
-implementation---replace each `TODO` with logic implementing the missing piece.
+The `source_routing.p4` file contains a skeleton P4 program with key
+pieces of logic replaced by `TODO` comments.  These should guide your
+implementation---replace each `TODO` with logic implementing the
+missing piece.
 
 A complete `source_routing.p4` will contain the following components:
 
-1. Header type definitions for Ethernet (`ethernet_t`) and IPv4 (`ipv4_t`) and Source Route (`srcRoute_t`).
-2. **TODO:** Parsers for Ethernet and Source Route that populate `ethernet` and `srcRoutes` fields.
+1. Header type definitions for Ethernet (`ethernet_t`) and IPv4
+   (`ipv4_t`) and Source Route (`srcRoute_t`).
+2. **TODO:** Parsers for Ethernet and Source Route that populate
+   `ethernet` and `srcRoutes` fields.
 3. An action to drop a packet, using `mark_to_drop()`.
 4. **TODO:** An action (called `srcRoute_nhop`), which will:
 	1. Set the egress port for the next hop. 
@@ -90,40 +99,43 @@ A complete `source_routing.p4` will contain the following components:
 
 ## Step 3: Run your solution
 
-Follow the instructions from Step 1. This time, your message from `h1` should
-be delivered to `h2`.
+Follow the instructions from Step 1. This time, your message from `h1`
+should be delivered to `h2`.
 
-Check the `ttl` of the IP header. Each hop decrements `ttl`.
-The port sequence `2 3 2 2 1`, forces the packet to have a loop,
-so the `ttl` should be 59 at `h2`.
-Can you find the port sequence for the shortest path?
+Check the `ttl` of the IP header. Each hop decrements `ttl`.  The port
+sequence `2 3 2 2 1`, forces the packet to have a loop, so the `ttl`
+should be 59 at `h2`.  Can you find the port sequence for the shortest
+path?
 
 ### Food for thought
- - Can we change the program to handle both IPv4 forwarding and sourceRouting
-at the same time?
- - How would you enhance your program to let the first switch add the path,
-so that source routing would be transparent to end-hosts?
+* Can we change the program to handle both IPv4 forwarding and source
+routing at the same time?
+* How would you enhance your program to let the first switch add the
+path, so that source routing would be transparent to end-hosts?
 
 ### Troubleshooting
 
 There are several ways that problems might manifest:
 
-1. `source_routing.p4` fails to compile. In this case, `run.sh` will report the
-error emitted from the compiler and stop.
+1. `source_routing.p4` fails to compile. In this case, `run.sh` will
+   report the error emitted from the compiler and stop.
 2. `source_routing.p4` compiles but switches or mininet do not start.
-Do you have another instance of mininet running? Did the previous run of mininet crash?
-if yes, check "Cleaning up Mininet" bellow. 
-3. `source_routing.p4` compiles but the switch does not process packets in the desired way.
-The `build/logs/<switch-name>.log` files contain trace messages describing how each
-switch processes each packet. The output is detailed and can help pinpoint
-logic errors in your implementation.
-The `build/<switch-name>-<interface-name>.pcap` also contains the pcap of packets on each
-interface. Use `tcpdump -r <filename> -xxx` to print the hexdump of the packets. 
+   Do you have another instance of mininet running? Did the previous
+   run of mininet crash?  if yes, check "Cleaning up Mininet" bellow.
+3. `source_routing.p4` compiles but the switch does not process
+   packets in the desired way. The `build/logs/<switch-name>.log`
+   files contain trace messages describing how each switch processes
+   each packet. The output is detailed and can help pinpoint logic
+   errors in your implementation.  The
+   `build/<switch-name>-<interface-name>.pcap` also contains the pcap
+   of packets on each interface. Use `tcpdump -r <filename> -xxx` to
+   print the hexdump of the packets.
 
 #### Cleaning up Mininet
 
 In the cases above, `run.sh` may leave a Mininet instance running in
-the background.  Use the following command to clean up these instances:
+the background.  Use the following command to clean up these
+instances:
 
 ```bash
 mn -c
@@ -131,4 +143,5 @@ mn -c
 
 ## Next Steps
 
-Congratulations, your implementation works!  Move on to the next exercise
+Congratulations, your implementation works!  Move on to
+[Calculator](../calc).
