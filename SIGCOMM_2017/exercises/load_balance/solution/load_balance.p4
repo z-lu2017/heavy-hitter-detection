@@ -70,7 +70,6 @@ parser MyParser(packet_in packet, out headers hdr, inout metadata meta, inout st
     }
 }
 control MyVerifyChecksum(in headers hdr, inout metadata meta) {
-    Checksum16() ipv4_checksum;    	   
     apply {
     }
 }
@@ -81,13 +80,11 @@ control MyIngress(inout headers hdr, inout metadata meta, inout standard_metadat
     action set_ecmp_select(bit<16> ecmp_base, bit<32> ecmp_count) {
         hash(meta.ecmp_select, HashAlgorithm.crc16, ecmp_base, { hdr.ipv4.srcAddr, hdr.ipv4.dstAddr, hdr.ipv4.protocol, hdr.tcp.srcPort, hdr.tcp.dstPort }, ecmp_count);
     }
-    action set_nhop(bit<32> nhop_ipv4, bit<9> port) {
+    action set_nhop(bit<48> nhop_dmac, bit<32> nhop_ipv4, bit<9> port) {
+        hdr.ethernet.dstAddr = nhop_dmac;
         hdr.ipv4.dstAddr = nhop_ipv4;
         standard_metadata.egress_spec = port;
         hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
-    }
-    action set_dmac(bit<48> dmac) {
-        hdr.ethernet.dstAddr = dmac;
     }
     table ecmp_group {
         key = {
@@ -109,16 +106,6 @@ control MyIngress(inout headers hdr, inout metadata meta, inout standard_metadat
         }
         size = 16384;
     }
-    table forward {
-        key = {
-            hdr.ipv4.dstAddr : exact;
-        }
-        actions = {
-            set_dmac;
-            drop;
-        }
-        size = 512;
-    }
     table debug {
        key = {
             meta.ecmp_select: exact;
@@ -129,7 +116,6 @@ control MyIngress(inout headers hdr, inout metadata meta, inout standard_metadat
         if (hdr.ipv4.isValid() && hdr.ipv4.ttl > 0) {
             ecmp_group.apply();
             ecmp_nhop.apply();
-            forward.apply();
         }
 	debug.apply();
     }
