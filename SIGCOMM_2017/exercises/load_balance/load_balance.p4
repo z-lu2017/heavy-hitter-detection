@@ -81,7 +81,7 @@ control MyIngress(inout headers hdr, inout metadata meta, inout standard_metadat
         /* TODO: hash on 5-tuple and save the hash result in meta.ecmp_select 
            so that the ecmp_nhop table can use it to make a forwarding decision accordingly */
     }
-    action set_nhop(bit<32> nhop_ipv4, bit<48> nhop_dmac, bit<9> port) {
+    action set_nhop(bit<48> nhop_dmac, bit<32> nhop_ipv4, bit<9> port) {
         hdr.ethernet.dstAddr = nhop_dmac;
         hdr.ipv4.dstAddr = nhop_ipv4;
         standard_metadata.egress_spec = port;
