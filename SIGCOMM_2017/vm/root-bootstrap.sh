@@ -14,6 +14,7 @@ apt-get install -y \
   git \
   vim \
   emacs24 \
+  xcscope-el \
   sublime-text-installer \
   atom \
   xterm \
@@ -45,8 +46,9 @@ echo "p4 ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/99_p4
 chmod 440 /etc/sudoers.d/99_p4
 
 cd /usr/share/lubuntu/wallpapers/
-cp /home/vagrant/p4-wallpaper.png .
+cp /home/vagrant/p4-logo.png .
 rm lubuntu-default-wallpaper.png
-ln -s p4-wallpaper.png lubuntu-default-wallpaper.png
-rm /home/vagrant/p4-wallpaper.png
+ln -s p4-logo.png lubuntu-default-wallpaper.png
+rm /home/vagrant/p4-logo.png
 cd /home/vagrant
+sed -i s@#background=@background=/usr/share/lubuntu/wallpapers/1604-lubuntu-default-wallpaper.png@ /etc/lightdm/lightdm-gtk-greeter.conf
