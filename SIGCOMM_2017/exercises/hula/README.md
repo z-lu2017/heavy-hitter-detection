@@ -18,8 +18,8 @@ Here is how HULA works:
   to the destination ToR. Based on the congestion information collected via probes, 
   each destination ToR then can maintain the current best path (i.e., least congested path)
   from each source ToR. To share the best path information with the source ToRs so that 
-  the sources can use that information for the other flows, the destination ToRs notify
-  source ToRs of the current best path by returning a HULA probe back to the source 
+  the sources can use that information for new flows, the destination ToRs notify
+  source ToRs of the current best path by returning the HULA probe back to the source 
   ToR (reverse path) only if the current best path changes. The probe packets include
   a HULA header and a list of ports for source routing. We describe the elements of HULA header later.
 - In the forward path:
@@ -44,15 +44,15 @@ Here is how HULA works:
 - In the reverse path:
   - Each hop will update the "routing next hop" to the destination ToR based on the port
    it received the HULA packet on (as it was the best path). Then it forwards the packet
-   to next hop in reverse path based on source routing.
+   to the next hop in reverse path based on source routing.
   - Source ToR also drops the packet.
 - Now for each data packet,
   - Each hop hashes the flow header fields and looks into a "flow table".
-  - If it doesn't find the next hop for the flow, looks for "routing next hop" to 
+  - If it doesn't find the next hop for the flow, looks into "routing next hop" to 
     find the next hop for destination ToR. We assume each ToR serves a /24 IP address.
-    The switch also updates the "flow table". "flow table" prevents the path for a flow from changing
+    The switch also updates the "flow table". "flow table" prevents the path of a flow to change
     in order to avoid packet re-ordering and path oscilation during updating next hops.
-  - Otherwise, each hop just use the next hop.
+  - Otherwise, each hop just uses the next hop.
 
 Your switch will have multiple tables, which the control plane will
 populate with static rules. We have already defined
@@ -66,7 +66,7 @@ logic of your P4 program.
 ## Step 1: Run the (incomplete) starter code
 
 The directory with this README also contains a skeleton P4 program,
-`hula.p4`, which initially drops all packets.  Your job (in the next
+`hula.p4`, which initially drops all packets. Your job (in the next
 step) will be to extend it to properly update HULA packets and forward data packets.
 
 Before that, let's compile the incomplete `hula.p4` and bring up a
@@ -136,7 +136,7 @@ A complete `hula.p4` will contain the following components:
    Otherwise, this table just runs `srcRoute_nhop` to perform source routing.
 5. `hula_bwd` table: at revere path, updates next hop to the destination ToR using `hula_set_nhop`
 action. The action updates `dstindex_nhop_reg` register.
-6. `hula_src` table just checks the source IP address of a HULA packet in reverse path.
+6. `hula_src` table checks the source IP address of a HULA packet in reverse path.
    if this switch is the source, this is the end of reverse path, thus drop the packet.
    Otherwise use `srcRoute_nhop` action to continue source routing in the reverse path.
 7. `hula_nhop` table for data packets, reads destination IP/24 to get an index.
@@ -157,7 +157,7 @@ action. The action updates `dstindex_nhop_reg` register.
       * else, if this HULA packet came through current best path (`hula.digest` is equal to 
        the value in `srcindex_digest_reg`), update its queue length in `srcindex_qdepth_reg`.
        In this case we don't need to send the HULA packet back, thus drop the packet.
-    * in backward path (`hdr.hula.dir==1`):
+    * in reverse path (`hdr.hula.dir==1`):
       * apply `hula_bwd` to update the HULA next hop to the destination ToR
       * apply `hula_src` table to drop the packet if it is the source ToR of the HULA packet
   * If it is a data packet
@@ -169,9 +169,8 @@ action. The action updates `dstindex_nhop_reg` register.
     * apply `dmac` table to update `ethernet.dstAddr`. This is necessary for the links that send packets
     to hosts. Otherwise their NIC will drop packets.
   * udpate TTL
-5. **TODO:** An egress control that:
-   * For HULA packets that are in forward path (`hdr.hula.dir==0`)
-   * Compare `standard_metadata.deq_qdepth` to `hdr.hula.qdepth` 
+5. **TODO:** An egress control that for HULA packets that are in forward path (`hdr.hula.dir==0`)
+   compares `standard_metadata.deq_qdepth` to `hdr.hula.qdepth` 
      in order to save the maximum in `hdr.hula.qdepth`
 7. A deparser that selects the order in which fields inserted into the outgoing
    packet.
@@ -219,12 +218,12 @@ While the connections are running, watch the iperf server's output at `h3`.
 Although there are two completely non-overlapping paths for `h1` and `h2` to reach `h3`,
 both `h1` and `h2` end up using the same spine, and hence the aggregate 
 throughput of the two connections is capped to 1Mbps. 
-You can confirm this by watching the performance each connection gets.
+You can confirm this by watching the performance of each connection.
 
 
 Our goal is allowing the two connections to use two different spine switches and hence achieve
 1Mbps each. We can do this by first causing congestion on one of the spines. More specifically
-we'll create congestion at the queue in `s1` facing the link `s11-to-s3` by running a 
+we'll create congestion at the queue in `s11` facing the link `s11-to-s3` by running a 
 long-running connection (an elephant flow) from `s1` to `s3` through `s11`. 
 Once the queue builds up due to the elephant, then we'll let `s2` generate HULA probes 
 several times so that it can learn to avoid forwarding new flows destined to `s3` through `s11`. 
@@ -248,7 +247,8 @@ iperf -c 10.0.3.3 -t 3000 -u -b 2m
 ```bash
 sudo ./generatehula.py
 ```
-This should let `s2` know that the best path to `s3` is through the uncongested spine, `s22`.
+This should let `s2` know that the path through `s11` to `s3` is congested and
+the best path is now through the uncongested spine, `s22`.
 5. Now, run iperf client at `h2`
 ```bash
 iperf -c 10.0.3.3 -t 30 -u -b 2m
@@ -260,6 +260,11 @@ You will be able to confirm both iperf sessions achieve 1Mbps because they go th
 * in the ingress control logic, the destination ToR always sends a HULA packet 
 back on the reverse path if the queue length is better. But this is not necessary
 if it came from the best path. Can you improve the code?
+* the hula packets on the congested path may get dropped or extremely delayed,
+thus the destination ToR would not be aware of the worsened condition of the current best path.
+A solution could be that the destination ToR uses a timeout mechanism to ignore the current best path
+if it doesn't receive a hula packet through it for a long time.
+How can you implement this inside dataplane? 
 
 ### Troubleshooting
 
