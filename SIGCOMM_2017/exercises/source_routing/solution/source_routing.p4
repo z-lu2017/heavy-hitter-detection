@@ -149,13 +149,9 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
 *************   C H E C K S U M    C O M P U T A T I O N   **************
 *************************************************************************/
 
-control computeChecksum(
-    inout headers  hdr,
-    inout metadata meta)
-{
+control computeChecksum(inout headers  hdr, inout metadata meta) {
     apply {  }
 }
-
 
 /*************************************************************************
 ***********************  D E P A R S E R  *******************************
