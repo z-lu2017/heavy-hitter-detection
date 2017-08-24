@@ -13,26 +13,32 @@ To keep the example simple, we implement it on top of source routing exercise.
 Here is how Hula works:
 - Each ToR switch generates a HULA packet to each other ToR switch
   to probe the condition of every path between the source and the destination ToR.
-  The HULA packets are forwarded to the destination ToR (forward path) and may come back to 
-  the source ToR (reverse path) if the best path from the source to the destination changes.
-  The packets include a HULA header and a list of ports for source routing. 
-  We describe the elements of HULA header later.
-  The source routing port list has the ports for going to the distination ToR
-  on the specific path and then returning back to the source ToR (on the same path).
+  Each HULA packet is forwarded to the destination ToR (forward path), collects the maximum 
+  queue length it observes while being forwarded, and finally delivers that information
+  to the destination ToR. Based on the congestion information collected via probes, 
+  each destination ToR then can maintain the current best path (i.e., least congested path)
+  from each source ToR. To share the best path information with the source ToRs so that 
+  the sources can use that information for the other flows, the destination ToRs notify
+  source ToRs of the current best path by returning a HULA probe back to the source 
+  ToR (reverse path) only if the current best path changes. The probe packets include
+  a HULA header and a list of ports for source routing. We describe the elements of HULA header later.
 - In the forward path:
-  - Each hop updates the queue length field in the hula header at egress if it is smaller than
-   observed queue length at that switch. Thus when the packet reaches the destination
-   ToR, queue length field will be the maximum observed queue length.
+  - Each hop updates the queue length field in the hula header if the local queue depth observed by
+  the HULA packet is larger than maximum queue depth recorded in the probe packet. Thus when 
+  the packet reaches the destination ToR, queue length field will be the maximum observed queue length 
+  on the forward path.
   - At destination ToR, 
-    1. find the queue length of current best path from the source ToR
+    1. find the queue length of current best path from the source ToR.
     2. if the new path is better, update the queue length and best path and return
-     the HULA packet to the source path. This is done by setting the direction field
+     the HULA probe to the source path. This is done by setting the direction field
      in the HULA header and returning the packet to the ingress port.
-    3. if the packet came from the current best path, just update the value.
-     This is to know if the best path got worse and allows other paths to replace it later.
-     It is inefficient to save the whole path and compare it in the data plane.
-     Instead, we keep a 32 bit digest of path in the HULA header. Each destination ToR,
-     only saves and compares the digest of the best path along with its queue length.
+    3. if the probe came through the current best path, the destination ToR just updates
+     the existing value. This is needed to know if the best path got worse and hence allow 
+     other paths to replace it later. It is inefficient to save the whole path ID 
+     (i.e., sequence of switch IDs) and compare it in the data plane; 
+     note, P4 doesn't have a loop construct. Instead, we keep a 32 bit digest of a 
+     path in the HULA header. Each destination ToR only saves and compares the 
+     digest of the best path along with its queue length.
      The `hula.digest` field is set by source ToR upon creating the HULA packet
      and does not change along the path.
 - In the reverse path:
@@ -175,21 +181,36 @@ action. The action updates `dstindex_nhop_reg` register.
 ## Step 3: Run your solution
 
 1. Run Mininet same as Step 1
-2. From the Mininet command line run
-```bash
-s1 ./generatehula.py
-```
-to send HULA packets from all ToR switches (`s1`, `s2` and `s3`) to each other
-on all paths.
 
-3. run `h1 ping h2`. The ping should work if you have completed the ingress control block
+2. Open a separate terminal, go to `exercises/hula`, and run `sudo ./generatehula.py`. 
+   This python script makes each ToR switch generate one HULA probe for each other ToR and 
+   through each separate forward path. For example, `s1` first probes `s2` via `s11` and then via `s22`. 
+   Then `s1` probes `s3` again first via `s11` and then via `s22`. `s2` does the same thing to probe
+   paths to `s1` and `s3`, and so does `s3`.
+
+3. Now run `h1 ping h2`. The ping should work if you have completed the ingress control block in `hula.p4`.
+Note at this point, all paths are equal because there isn't any congestion in the network.
  
 Now we are going to test a more complex scenario.
-We send two iperf traffic to `h3` from `h1` and `h2`
-But without sending HULA packets,
-they will both use the same spine switch and as spine links
-have only 1mbps, they must share bandwidth, thus each can reach only 512kbps.
-With HULA both iperf sessions can reach 1mbps.
+
+We first create two iperf sessions: one from `h1` to `h3`, and the other from `h2` to `h3`. 
+Since both `s1` and `s2` both currently think their best paths to `s3` should go through `s11`,
+the two connections will both use the same spine switch (`s11`). Note we throttled the 
+links from the spine switches to `s3` down to 1Mbps. Hence, each of the two connections 
+achieve only ~512Kbps.
+
+
+
+
+Our goal is allowing the two connections to use two different spien switches and hence achieve
+1Mbps each. We can do this by first causing congestion on one of the spines. More specifically
+we'll create congestion at the queue in `s1` facing the link `s11-to
+
+3. This is possible by 
+creating a long-running connection (an elephant flow) from `s1` to `s3` through `s11`. 
+Once the queue builds up due to the elephant, then we'll let `s1` generate HULA probes 
+several times so that `s1` can learn that the best path to reach `s3` is now through `s22`, where
+there's no congestion. The following steps achieve this.
 
 1. open a terminal window on `h1`, `h2` and `h3`:
 ```bash
@@ -197,55 +218,51 @@ xterm h1 h2 h3
 ```
 2. start iperf server at `h3`
 ```bash
-iperf -s -u
+iperf -s -u -i 1
 ```
-3. run iperf client in `h1`
+3. run iperf client at `h1`
 ```bash
 iperf -c 10.0.3.3 -t 30 -u -b 2m
 ```
-4. run iperf client in `h2`
+4. run iperf client in `h2`. try to do step 3 and 4 simultaneously.
 ```bash
 iperf -c 10.0.3.3 -t 30 -u -b 2m
 ```
-Wait for them to finish. Look at the window in `h3`.
-Although there are two paths to `h3`,
-both `h1` and `h2` use the same path and aggregate bandwidth <= 1mbps
+While the connections are running, watch the iperf server's output at `h3`.
+Although there are two completely non-overlapping paths for `h1` and `h2` to `h3`,
+both `h1` and `h2` end up using the same spine, and hence the aggregate 
+bandwidth throughput of the two connections is limited up to 1Mbps. 
+You can confirm this by watching the performance each connection gets.
 
-Now lets redo the test, but before step 4 we will run `generatehula.py` twice.
-1. open a terminal window on `h1`, `h2` and `h3`. If you have closed mininet,
-you need to run `generatehula.py` first, to setup initial routes:
+Now lets re-run the test, but this time, before step 4 we will run `generatehula.py` a few times (five to ten).
+
+1. open a terminal window on `h1`, `h2` and `h3`. (By the way, if you have already closed mininet,
+you need to re-run the mininet test and run `generatehula.py` first, to setup initial routes)
 ```bash
 xterm h1 h2 h3
 ```
 2. start iperf server at `h3`
 ```bash
-iperf -s -u
+iperf -s -u -i 1
 ```
-3. run iperf client in `h1`
+3. create a long-running full-demand connection from `h1` to `h3` through `s11`. you can do this by running the following at `h1`
 ```bash
 iperf -c 10.0.3.3 -t 30 -u -b 2m
 ```
-4. in mininet command window run
+4. outside mininet (in a separate terminal), go to `exercises/hula`, and run the following several times
 ```bash
-./generatehula.py
+sudo ./generatehula.py
 ```
-This should let `s3` to know that the current chosen path has large queue length.
-But because of the path is congested, it will reach after updates from other paths.
-Let's send HULA packets again so that the better path can replace current path.
-```bash
-./generatehula.py
-```
-Alternatively, you can force `generatehula.py` to run every five seconds by passing `5` as
-an argument.
+This should let `s2` to know that the best path to `s3` is through the uncongested spine, `s22`.
 
-5. run iperf client in `h2`
+5. Now, run iperf client at `h2`
 ```bash
 iperf -c 10.0.3.3 -t 30 -u -b 2m
 ```
-Both iperf should reach 1mbps now.
+You will be able to confirm both iperf achieve 1Mbps because they go through two different spines.
 
 ### Food for thought
-* how can we implement flowlet routing say based on the timestamp of packets
+* how can we implement flowlet routing (as opposed to flow routing) say based on the timestamp of packets
 * in the ingress control logic, the destination ToR always sends a HULA packet 
 back on the reverse path if the queue length is better. But this is not necessary
 if it came from the best path. Can you improve the code?
