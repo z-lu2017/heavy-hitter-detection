@@ -46,7 +46,7 @@ struct headers {
 *********************** P A R S E R  ***********************************
 *************************************************************************/
 
-parser ParserImpl(packet_in packet,
+parser MyParser(packet_in packet,
                   out headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
@@ -62,7 +62,7 @@ parser ParserImpl(packet_in packet,
 ************   C H E C K S U M    V E R I F I C A T I O N   *************
 *************************************************************************/
 
-control verifyChecksum(in headers hdr, inout metadata meta) {   
+control MyVerifyChecksum(in headers hdr, inout metadata meta) {   
     apply {  }
 }
 
@@ -71,7 +71,7 @@ control verifyChecksum(in headers hdr, inout metadata meta) {
 **************  I N G R E S S   P R O C E S S I N G   *******************
 *************************************************************************/
 
-control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
+control MyIngress(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
     action drop() {
         mark_to_drop();
     }
@@ -103,7 +103,7 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
 ****************  E G R E S S   P R O C E S S I N G   *******************
 *************************************************************************/
 
-control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
+control MyEgress(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
     apply {  }
 }
 
@@ -111,29 +111,23 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
 *************   C H E C K S U M    C O M P U T A T I O N   **************
 *************************************************************************/
 
-control computeChecksum(
-    inout headers  hdr,
-    inout metadata meta)
-{
-    Checksum16() ipv4_checksum;
-    
-    apply {
-        if (hdr.ipv4.isValid()) {
-            hdr.ipv4.hdrChecksum = ipv4_checksum.get(
-                {    
-                    hdr.ipv4.version,
-                    hdr.ipv4.ihl,
-                    hdr.ipv4.diffserv,
-                    hdr.ipv4.totalLen,
-                    hdr.ipv4.identification,
-                    hdr.ipv4.flags,
-                    hdr.ipv4.fragOffset,
-                    hdr.ipv4.ttl,
-                    hdr.ipv4.protocol,
-                    hdr.ipv4.srcAddr,
-                    hdr.ipv4.dstAddr
-                });
-        }
+control MyComputeChecksum(inout headers  hdr, inout metadata meta) {
+     apply {
+	update_checksum(
+	    hdr.ipv4.isValid(),
+            { hdr.ipv4.version,
+	      hdr.ipv4.ihl,
+              hdr.ipv4.diffserv,
+              hdr.ipv4.totalLen,
+              hdr.ipv4.identification,
+              hdr.ipv4.flags,
+              hdr.ipv4.fragOffset,
+              hdr.ipv4.ttl,
+              hdr.ipv4.protocol,
+              hdr.ipv4.srcAddr,
+              hdr.ipv4.dstAddr },
+            hdr.ipv4.hdrChecksum,
+            HashAlgorithm.csum16);
     }
 }
 
@@ -142,7 +136,7 @@ control computeChecksum(
 ***********************  D E P A R S E R  *******************************
 *************************************************************************/
 
-control DeparserImpl(packet_out packet, in headers hdr) {
+control MyDeparser(packet_out packet, in headers hdr) {
     apply {
         /* TODO: add deparser logic */
     }
@@ -153,10 +147,10 @@ control DeparserImpl(packet_out packet, in headers hdr) {
 *************************************************************************/
 
 V1Switch(
-ParserImpl(),
-verifyChecksum(),
-ingress(),
-egress(),
-computeChecksum(),
-DeparserImpl()
+MyParser(),
+MyVerifyChecksum(),
+MyIngress(),
+MyEgress(),
+MyComputeChecksum(),
+MyDeparser()
 ) main;

@@ -1,5 +1,10 @@
+/* -*- P4_16 -*- */
 #include <core.p4>
 #include <v1model.p4>
+
+/*************************************************************************
+*********************** H E A D E R S  ***********************************
+*************************************************************************/
 
 header ethernet_t {
     bit<48> dstAddr;
@@ -46,6 +51,10 @@ struct headers {
     tcp_t      tcp;
 }
 
+/*************************************************************************
+*********************** P A R S E R  ***********************************
+*************************************************************************/
+
 parser MyParser(packet_in packet, out headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
     state start {
         transition parse_ethernet;
@@ -69,10 +78,19 @@ parser MyParser(packet_in packet, out headers hdr, inout metadata meta, inout st
         transition accept;
     }
 }
+
+/*************************************************************************
+************   C H E C K S U M    V E R I F I C A T I O N   *************
+*************************************************************************/
+
 control MyVerifyChecksum(in headers hdr, inout metadata meta) {
-    apply {
-    }
+    apply { }
 }
+
+/*************************************************************************
+**************  I N G R E S S   P R O C E S S I N G   *******************
+*************************************************************************/
+
 control MyIngress(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
     action drop() {
         mark_to_drop();
@@ -114,6 +132,11 @@ control MyIngress(inout headers hdr, inout metadata meta, inout standard_metadat
         }
     }
 }
+
+/*************************************************************************
+****************  E G R E S S   P R O C E S S I N G   *******************
+*************************************************************************/
+
 control MyEgress(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
     action rewrite_mac(bit<48> smac) {
         hdr.ethernet.srcAddr = smac;
@@ -135,6 +158,35 @@ control MyEgress(inout headers hdr, inout metadata meta, inout standard_metadata
         send_frame.apply();
     }
 }
+
+/*************************************************************************
+*************   C H E C K S U M    C O M P U T A T I O N   **************
+*************************************************************************/
+
+control MyComputeChecksum(inout headers  hdr, inout metadata meta) {
+     apply {
+	update_checksum(
+	    hdr.ipv4.isValid(),
+            { hdr.ipv4.version,
+	      hdr.ipv4.ihl,
+              hdr.ipv4.diffserv,
+              hdr.ipv4.totalLen,
+              hdr.ipv4.identification,
+              hdr.ipv4.flags,
+              hdr.ipv4.fragOffset,
+              hdr.ipv4.ttl,
+              hdr.ipv4.protocol,
+              hdr.ipv4.srcAddr,
+              hdr.ipv4.dstAddr },
+            hdr.ipv4.hdrChecksum,
+            HashAlgorithm.csum16);
+    }
+}
+
+/*************************************************************************
+***********************  D E P A R S E R  *******************************
+*************************************************************************/
+
 control MyDeparser(packet_out packet, in headers hdr) {
     apply {
         packet.emit(hdr.ethernet);
@@ -142,11 +194,16 @@ control MyDeparser(packet_out packet, in headers hdr) {
         packet.emit(hdr.tcp);
     }
 }
-control MyComputeChecksum(inout headers hdr, inout metadata meta) {
-    Checksum16() ipv4_checksum;
-    ipv4_t ipv4 = hdr.ipv4;
-    apply {
-      hdr.ipv4.hdrChecksum = ipv4_checksum.get({ hdr.ipv4.version, hdr.ipv4.ihl, hdr.ipv4.diffserv, hdr.ipv4.totalLen, hdr.ipv4.identification, hdr.ipv4.flags, hdr.ipv4.fragOffset, hdr.ipv4.ttl, hdr.ipv4.protocol, 16w0, hdr.ipv4.srcAddr, hdr.ipv4.dstAddr });
-    }
-}
-V1Switch(MyParser(), MyVerifyChecksum(), MyIngress(), MyEgress(), MyComputeChecksum(), MyDeparser()) main;
+
+/*************************************************************************
+***********************  S W I T C H  *******************************
+*************************************************************************/
+
+V1Switch(
+    MyParser(),
+    MyVerifyChecksum(),
+    MyIngress(),
+    MyEgress(),
+    MyComputeChecksum(),
+    MyDeparser()
+) main;

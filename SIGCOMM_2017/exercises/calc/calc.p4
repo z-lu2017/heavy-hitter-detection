@@ -230,11 +230,9 @@ control MyEgress(
 /*************************************************************************
  *************   C H E C K S U M    C O M P U T A T I O N   **************
  *************************************************************************/
-control MyComputeChecksum(
-    inout my_headers_t  hdr,
-    inout my_metadata_t meta)
-{
-    apply {   }
+
+control MyComputeChecksum(inout headers  hdr, inout metadata meta) {
+    apply {  }
 }
 
 /*************************************************************************
