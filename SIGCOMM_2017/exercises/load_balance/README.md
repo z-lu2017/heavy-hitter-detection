@@ -28,7 +28,7 @@ up a switch in Mininet to test its behavior.
    ```   
    This will:
    * compile `load_balance.p4`, and
-   * start a Mininet instance with a single switch (`s1`) configured
+   * start a Mininet instance with three switches (`s1`, `s2`, `s3`) configured
      in a triangle, each connected to one host (`h1`, `h2`, `h3`).
    * The hosts are assigned IPs of `10.0.1.1`, `10.0.2.2`, etc.  
    * We use the IP address 10.0.0.1 to indicate traffic that should be
