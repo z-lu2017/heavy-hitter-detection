@@ -5,12 +5,12 @@
 
 The objective of this exercise is to implement a simplified version of 
 [HULA](http://web.mit.edu/anirudh/www/hula-sosr16.pdf).
-In contrast to ECMP, which selects the next hop randomly, Hula load balances
+In contrast to ECMP, which selects the next hop randomly, HULA load balances
 the flows over multiple paths to a destination ToR based on queue occupancy
 of switches in each path. Thus, it can use the whole bisection bandwidth.
 To keep the example simple, we implement it on top of source routing exercise.
 
-Here is how Hula works:
+Here is how HULA works:
 - Each ToR switch generates a HULA packet to each other ToR switch
   to probe the condition of every path between the source and the destination ToR.
   Each HULA packet is forwarded to the destination ToR (forward path), collects the maximum 
@@ -189,28 +189,15 @@ action. The action updates `dstindex_nhop_reg` register.
    paths to `s1` and `s3`, and so does `s3`.
 
 3. Now run `h1 ping h2`. The ping should work if you have completed the ingress control block in `hula.p4`.
-Note at this point, all paths are equal because there isn't any congestion in the network.
+Note at this point, every ToR considers all paths are equal because there isn't any congestion in the network.
  
 Now we are going to test a more complex scenario.
 
 We first create two iperf sessions: one from `h1` to `h3`, and the other from `h2` to `h3`. 
-Since both `s1` and `s2` both currently think their best paths to `s3` should go through `s11`,
-the two connections will both use the same spine switch (`s11`). Note we throttled the 
+Since both `s1` and `s2` currently think their best paths to `s3` should go through `s11`,
+the two connections will use the same spine switch (`s11`). Note we throttled the 
 links from the spine switches to `s3` down to 1Mbps. Hence, each of the two connections 
-achieve only ~512Kbps.
-
-
-
-
-Our goal is allowing the two connections to use two different spien switches and hence achieve
-1Mbps each. We can do this by first causing congestion on one of the spines. More specifically
-we'll create congestion at the queue in `s1` facing the link `s11-to
-
-3. This is possible by 
-creating a long-running connection (an elephant flow) from `s1` to `s3` through `s11`. 
-Once the queue builds up due to the elephant, then we'll let `s1` generate HULA probes 
-several times so that `s1` can learn that the best path to reach `s3` is now through `s22`, where
-there's no congestion. The following steps achieve this.
+achieves only ~512Kbps. Let's confirm this by taking the following steps.
 
 1. open a terminal window on `h1`, `h2` and `h3`:
 ```bash
@@ -229,12 +216,19 @@ iperf -c 10.0.3.3 -t 30 -u -b 2m
 iperf -c 10.0.3.3 -t 30 -u -b 2m
 ```
 While the connections are running, watch the iperf server's output at `h3`.
-Although there are two completely non-overlapping paths for `h1` and `h2` to `h3`,
+Although there are two completely non-overlapping paths for `h1` and `h2` to reach `h3`,
 both `h1` and `h2` end up using the same spine, and hence the aggregate 
-bandwidth throughput of the two connections is limited up to 1Mbps. 
+throughput of the two connections is capped to 1Mbps. 
 You can confirm this by watching the performance each connection gets.
 
-Now lets re-run the test, but this time, before step 4 we will run `generatehula.py` a few times (five to ten).
+
+Our goal is allowing the two connections to use two different spine switches and hence achieve
+1Mbps each. We can do this by first causing congestion on one of the spines. More specifically
+we'll create congestion at the queue in `s1` facing the link `s11-to-s3` by running a 
+long-running connection (an elephant flow) from `s1` to `s3` through `s11`. 
+Once the queue builds up due to the elephant, then we'll let `s2` generate HULA probes 
+several times so that it can learn to avoid forwarding new flows destined to `s3` through `s11`. 
+The following steps achieve this.
 
 1. open a terminal window on `h1`, `h2` and `h3`. (By the way, if you have already closed mininet,
 you need to re-run the mininet test and run `generatehula.py` first, to setup initial routes)
@@ -245,21 +239,21 @@ xterm h1 h2 h3
 ```bash
 iperf -s -u -i 1
 ```
-3. create a long-running full-demand connection from `h1` to `h3` through `s11`. you can do this by running the following at `h1`
+3. create a long-running full-demand connection from `h1` to `h3` through `s11`. 
+you can do this by running the following at `h1`
 ```bash
-iperf -c 10.0.3.3 -t 30 -u -b 2m
+iperf -c 10.0.3.3 -t 3000 -u -b 2m
 ```
-4. outside mininet (in a separate terminal), go to `exercises/hula`, and run the following several times
+4. outside mininet (in a separate terminal), go to `exercises/hula`, and run the following several (5 to 10) times
 ```bash
 sudo ./generatehula.py
 ```
-This should let `s2` to know that the best path to `s3` is through the uncongested spine, `s22`.
-
+This should let `s2` know that the best path to `s3` is through the uncongested spine, `s22`.
 5. Now, run iperf client at `h2`
 ```bash
 iperf -c 10.0.3.3 -t 30 -u -b 2m
 ```
-You will be able to confirm both iperf achieve 1Mbps because they go through two different spines.
+You will be able to confirm both iperf sessions achieve 1Mbps because they go through two different spines.
 
 ### Food for thought
 * how can we implement flowlet routing (as opposed to flow routing) say based on the timestamp of packets
