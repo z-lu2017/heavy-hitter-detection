@@ -83,6 +83,7 @@ parser MyParser(packet_in packet,
                 out headers hdr,
                 inout metadata meta,
                 inout standard_metadata_t standard_metadata) {
+
     state start {
         transition parse_ethernet;
     }
@@ -141,6 +142,7 @@ control MyVerifyChecksum(in headers hdr, inout metadata meta) {
 control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
+
     /* 
      * At destination ToR, saves the queue depth of the best path from
      * each source ToR
@@ -184,14 +186,14 @@ control MyIngress(inout headers hdr,
 
     /* 
      * Runs if it is the destination ToR.
-     * Control plane Gives the index of register for best path from a source ToR
+     * Control plane Gives the index of register for best path from source ToR
      */
     action hula_dst(bit<32> index) {
         meta.index = index;
     }
 
     /* 
-     * In reverse path, update nexthop to a destination ToR to the ingress port
+     * In reverse path, update nexthop to a destination ToR to ingress port
      * where we receive hula packet
      */
     action hula_set_nhop(bit<32> index) {
@@ -350,16 +352,18 @@ control MyIngress(inout headers hdr,
                 { hdr.ipv4.srcAddr, hdr.ipv4.dstAddr, hdr.udp.srcPort}, 
                 32w65536);
 
-            /* TODO:
-             * - Remove drop();
-             * - Read nexthop port from flow_port_reg for the flow
-             *   using flow_hash into a temporary variable
-             * - if port==0,
-             *  - apply hula_nhop table to get next hop for destination ToR 
-             *  - write the next hop into the flow_port_reg register indexed by flow_hash
-             * - else: write port into standard_metadata.egress_spec
-             */
-            drop();
+            /* look into hula tables */
+            bit<16> port;
+            flow_port_reg.read(port, (bit<32>)flow_hash);
+
+            if (port == 0){
+                /* if it is a new flow check hula paths */
+                hula_nhop.apply();
+                flow_port_reg.write((bit<32>)flow_hash, (bit<16>)standard_metadata.egress_spec);
+            }else{
+                /* old flows still use old path to avoid oscilation and packet reordering */
+                standard_metadata.egress_spec = (bit<9>)port;
+            }
 
             /* set the right dmac so that ping and iperf work */
             dmac.apply();
@@ -381,12 +385,15 @@ control MyEgress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
     apply {
-        /* TODO:
-         * if hula header is valid and this is forward path (hdr.hula.dir==0)
-         * check whether the qdepth in hula is smaller than 
-         * (qdepth_t)standard_metadata.deq_qdepth
-         * if yes update hdr.hula.qdepth
-         */
+        if (hdr.hula.isValid() && hdr.hula.dir == 0){
+
+            /* pick max qdepth in hula forward path */
+            if (hdr.hula.qdepth < (qdepth_t)standard_metadata.deq_qdepth){
+
+                /* update queue length */
+                hdr.hula.qdepth = (qdepth_t)standard_metadata.deq_qdepth;
+            } 
+        }
     }
 }
 
@@ -414,7 +421,6 @@ control MyComputeChecksum(inout headers hdr, inout metadata meta) {
     }
 }
 
-
 /*************************************************************************
 ***********************  D E P A R S E R  *******************************
 *************************************************************************/
@@ -434,10 +440,10 @@ control MyDeparser(packet_out packet, in headers hdr) {
 *************************************************************************/
 
 V1Switch(
-MyParser(),
+MyParserImpl(),
 MyVerifyChecksum(),
 MyIngress(),
 MyEgress(),
 MyComputeChecksum(),
-MyDeparser()
+MyDeparserImpl()
 ) main;
