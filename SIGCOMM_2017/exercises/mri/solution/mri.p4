@@ -82,10 +82,10 @@ error { IPHeaderTooShort }
 *********************** P A R S E R  ***********************************
 *************************************************************************/
 
-parser ParserImpl(packet_in packet,
-out headers hdr,
-inout metadata meta,
-inout standard_metadata_t standard_metadata) {
+parser MyParser(packet_in packet,
+                out headers hdr,
+                inout metadata meta,
+                inout standard_metadata_t standard_metadata) {
 
     state start {
         transition parse_ethernet;
@@ -140,7 +140,7 @@ inout standard_metadata_t standard_metadata) {
 ************   C H E C K S U M    V E R I F I C A T I O N   *************
 *************************************************************************/
 
-control verifyChecksum(in headers hdr, inout metadata meta) {   
+control MyVerifyChecksum(in headers hdr, inout metadata meta) {   
     apply {  }
 }
 
@@ -149,7 +149,9 @@ control verifyChecksum(in headers hdr, inout metadata meta) {
 **************  I N G R E S S   P R O C E S S I N G   *******************
 *************************************************************************/
 
-control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
+control MyIngress(inout headers hdr,
+                  inout metadata meta,
+                  inout standard_metadata_t standard_metadata) {
     action drop() {
         mark_to_drop();
     }
@@ -185,7 +187,9 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
 ****************  E G R E S S   P R O C E S S I N G   *******************
 *************************************************************************/
 
-control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
+control MyEgress(inout headers hdr,
+                 inout metadata meta,
+                 inout standard_metadata_t standard_metadata) {
     action add_swtrace(switchID_t swid) { 
         hdr.mri.count = hdr.mri.count + 1;
         hdr.swtraces.push_front(1);
@@ -197,11 +201,11 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
     }
 
     table swtrace {
-        actions        = { 
-		    add_swtrace; 
-		    NoAction; 
+        actions = { 
+	    add_swtrace; 
+	    NoAction; 
         }
-        default_action =  NoAction();      
+        default_action = NoAction();      
     }
     
     apply {
@@ -215,7 +219,7 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
 *************   C H E C K S U M    C O M P U T A T I O N   **************
 *************************************************************************/
 
-control computeChecksum(inout headers  hdr, inout metadata meta) {
+control MyComputeChecksum(inout headers hdr, inout metadata meta) {
      apply {
 	update_checksum(
 	    hdr.ipv4.isValid(),
@@ -239,7 +243,7 @@ control computeChecksum(inout headers  hdr, inout metadata meta) {
 ***********************  D E P A R S E R  *******************************
 *************************************************************************/
 
-control DeparserImpl(packet_out packet, in headers hdr) {
+control MyDeparser(packet_out packet, in headers hdr) {
     apply {
         packet.emit(hdr.ethernet);
         packet.emit(hdr.ipv4);
@@ -254,10 +258,10 @@ control DeparserImpl(packet_out packet, in headers hdr) {
 *************************************************************************/
 
 V1Switch(
-ParserImpl(),
-verifyChecksum(),
-ingress(),
-egress(),
-computeChecksum(),
-DeparserImpl()
+MyParser(),
+MyVerifyChecksum(),
+MyIngress(),
+MyEgress(),
+MyComputeChecksum(),
+MyDeparser()
 ) main;

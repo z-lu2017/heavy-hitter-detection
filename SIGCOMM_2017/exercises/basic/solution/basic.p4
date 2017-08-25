@@ -47,9 +47,9 @@ struct headers {
 *************************************************************************/
 
 parser MyParser(packet_in packet,
-                  out headers hdr,
-                  inout metadata meta,
-                  inout standard_metadata_t standard_metadata) {
+                out headers hdr,
+                inout metadata meta,
+                inout standard_metadata_t standard_metadata) {
 
     state start {
         transition parse_ethernet;
@@ -70,7 +70,6 @@ parser MyParser(packet_in packet,
 
 }
 
-
 /*************************************************************************
 ************   C H E C K S U M    V E R I F I C A T I O N   *************
 *************************************************************************/
@@ -84,7 +83,9 @@ control MyVerifyChecksum(in headers hdr, inout metadata meta) {
 **************  I N G R E S S   P R O C E S S I N G   *******************
 *************************************************************************/
 
-control MyIngress(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
+control MyIngress(inout headers hdr,
+                  inout metadata meta,
+                  inout standard_metadata_t standard_metadata) {
     action drop() {
         mark_to_drop();
     }
@@ -120,7 +121,9 @@ control MyIngress(inout headers hdr, inout metadata meta, inout standard_metadat
 ****************  E G R E S S   P R O C E S S I N G   *******************
 *************************************************************************/
 
-control MyEgress(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
+control MyEgress(inout headers hdr,
+                 inout metadata meta,
+                 inout standard_metadata_t standard_metadata) {
     apply {  }
 }
 
@@ -147,7 +150,6 @@ control MyComputeChecksum(inout headers  hdr, inout metadata meta) {
             HashAlgorithm.csum16);
     }
 }
-
 
 /*************************************************************************
 ***********************  D E P A R S E R  *******************************
