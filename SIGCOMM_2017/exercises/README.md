@@ -39,13 +39,13 @@ To build the virtual machine:
 - Log in with username `p4` and password `p4` and issue the command `sudo shutdown -r now`
 - When the machine reboots, you should have a graphical desktop machine with the required software pre-installed.
 
-To clone the repositories:
-
+To install dependences by hand:
 - `git clone https://github.com/p4lang/behavioral-model.git`
 - `git clone https://github.com/p4lang/p4c`
 - `git clone https://github.com/p4lang/tutorials`
-
-The first repository
+Then follow the instructions for how to build each package. Each of
+these repositories come with dependencies, which can be installed
+using the supplied instructions. The first repository
 ([behavioral-model](https://github.com/p4lang/behavioral-model))
 contains the P4 behavioral model. It is a C++ software switch that
 will implement the functionality specified in your P4 program. The
@@ -53,15 +53,9 @@ second repository ([p4c](https://github.com/p4lang/p4c-bm)) is the
 compiler for the behavioral model. It takes P4 program and produces a
 JSON file which can be loaded by the behavioral model. The third
 repository ([tutorial](https://github.com/p4lang/tutorial)) is the P4
-Tutorial itself.
-
-Each of these repositories come with dependencies, which can be
-installed using the supplied instructions. 
-
-You will also need to install `mininet`. On Ubuntu, it would look like
-this:
+Tutorial itself. You will also need to install `mininet`. On Ubuntu,
+it would look like this:
 
 ```
 $ sudo apt-get install mininet
-$ sudo pip install scapy thrift networkx
 ```
