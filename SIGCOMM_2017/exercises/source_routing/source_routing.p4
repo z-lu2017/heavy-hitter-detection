@@ -55,10 +55,10 @@ struct headers {
 *********************** P A R S E R  ***********************************
 *************************************************************************/
 
-parser ParserImpl(packet_in packet,
-                  out headers hdr,
-                  inout metadata meta,
-                  inout standard_metadata_t standard_metadata) {
+parser MyParser(packet_in packet,
+                out headers hdr,
+                inout metadata meta,
+                inout standard_metadata_t standard_metadata) {
 
     
     state start {
@@ -68,8 +68,9 @@ parser ParserImpl(packet_in packet,
     state parse_ethernet {
         packet.extract(hdr.ethernet);
         /*
-         * TODO: Modify the next line to select on the value of hdr.ethernet.etherType
-         * If the value is TYPE_SRCROUTING go to parse_srcRouting otherwise accept.
+         * TODO: Modify the next line to select on hdr.ethernet.etherType
+         * If the value is TYPE_SRCROUTING transition to parse_srcRouting
+         * otherwise transition to accept.
          */
         transition accept;
     }
@@ -95,7 +96,7 @@ parser ParserImpl(packet_in packet,
 ************   C H E C K S U M    V E R I F I C A T I O N   *************
 *************************************************************************/
 
-control verifyChecksum(in headers hdr, inout metadata meta) {   
+control MyVerifyChecksum(in headers hdr, inout metadata meta) {   
     apply {  }
 }
 
@@ -104,17 +105,19 @@ control verifyChecksum(in headers hdr, inout metadata meta) {
 **************  I N G R E S S   P R O C E S S I N G   *******************
 *************************************************************************/
 
-control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
+control MyIngress(inout headers hdr,
+                  inout metadata meta,
+                  inout standard_metadata_t standard_metadata) {
 
-    /* This action will drop packets */
     action drop() {
         mark_to_drop();
     }
     
     action srcRoute_nhop() {
         /*
-         * TODO: change standard_metadata.egress_spec to the port of hdr.srcRoutes[0]
-         * and pop 1 entry from hdr.srcRoutes
+         * TODO: set standard_metadata.egress_spec 
+         * to the port in hdr.srcRoutes[0] and
+         * pop an entry from hdr.srcRoutes
          */
     }
 
@@ -130,7 +133,7 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
         if (hdr.srcRoutes[0].isValid()){
             /*
              * TODO: add logic to:
-             * - If last srcRoutes (top of stack has bos==1):
+             * - If final srcRoutes (top of stack has bos==1):
              *   - change etherType to IP
              * - choose next hop and remove top of srcRoutes stack
              */
@@ -148,7 +151,9 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
 ****************  E G R E S S   P R O C E S S I N G   *******************
 *************************************************************************/
 
-control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
+control MyEgress(inout headers hdr,
+                 inout metadata meta,
+                 inout standard_metadata_t standard_metadata) {
     apply {  }
 }
 
@@ -156,7 +161,7 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
 *************   C H E C K S U M    C O M P U T A T I O N   **************
 *************************************************************************/
 
-control computeChecksum(inout headers  hdr, inout metadata meta) {
+control MyComputeChecksum(inout headers hdr, inout metadata meta) {
     apply {  }
 }
 
@@ -164,7 +169,7 @@ control computeChecksum(inout headers  hdr, inout metadata meta) {
 ***********************  D E P A R S E R  *******************************
 *************************************************************************/
 
-control DeparserImpl(packet_out packet, in headers hdr) {
+control MyDeparser(packet_out packet, in headers hdr) {
     apply {
         packet.emit(hdr.ethernet);
         packet.emit(hdr.srcRoutes);
@@ -177,10 +182,10 @@ control DeparserImpl(packet_out packet, in headers hdr) {
 *************************************************************************/
 
 V1Switch(
-ParserImpl(),
-verifyChecksum(),
-ingress(),
-egress(),
-computeChecksum(),
-DeparserImpl()
+MyParser(),
+MyVerifyChecksum(),
+MyIngress(),
+MyEgress(),
+MyComputeChecksum(),
+MyDeparser()
 ) main;
