@@ -440,10 +440,10 @@ control MyDeparser(packet_out packet, in headers hdr) {
 *************************************************************************/
 
 V1Switch(
-MyParserImpl(),
+MyParser(),
 MyVerifyChecksum(),
 MyIngress(),
 MyEgress(),
 MyComputeChecksum(),
-MyDeparserImpl()
+MyDeparser()
 ) main;
