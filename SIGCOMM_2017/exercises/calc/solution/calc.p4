@@ -82,7 +82,7 @@ header p4calc_t {
  * We only need to declare the type, but there is no need to instantiate it,
  * because it is done "by the architecture", i.e. outside of P4 functions
  */
-struct my_headers_t {
+struct headers {
     ethernet_t   ethernet;
     p4calc_t     p4calc;
 }
@@ -94,19 +94,18 @@ struct my_headers_t {
  * because it is done "by the architecture", i.e. outside of P4 functions
  */
  
-struct my_metadata_t {
+struct metadata {
     /* In our case it is empty */
 }
 
 /*************************************************************************
  ***********************  P A R S E R  ***********************************
  *************************************************************************/
-parser MyParser(
-    packet_in                 packet,
-    out   my_headers_t    hdr,
-    inout my_metadata_t   meta,
-    inout standard_metadata_t standard_metadata)
-{    
+parser MyParser(packet_in packet,
+                out headers hdr,
+                inout metadata meta,
+                inout standard_metadata_t standard_metadata) {
+
     state start {
         packet.extract(hdr.ethernet);
         transition select(hdr.ethernet.etherType) {
@@ -133,22 +132,18 @@ parser MyParser(
 /*************************************************************************
  ************   C H E C K S U M    V E R I F I C A T I O N   *************
  *************************************************************************/
-control MyVerifyChecksum(
-    in    my_headers_t   hdr,
-    inout my_metadata_t  meta)
-{
-    apply {
-    }
+control MyVerifyChecksum(in headers hdr,
+                         inout metadata meta) {
+    apply { }
 }
 
 /*************************************************************************
  **************  I N G R E S S   P R O C E S S I N G   *******************
  *************************************************************************/
-control MyIngress(
-    inout my_headers_t     hdr,
-    inout my_metadata_t    meta,
-    inout standard_metadata_t  standard_metadata)
-{
+control MyIngress(inout headers hdr,
+                  inout metadata meta,
+                  inout standard_metadata_t standard_metadata) {
+    
     action send_back(bit<32> result) {
         bit<48> tmp;
 
@@ -223,39 +218,39 @@ control MyIngress(
 /*************************************************************************
  ****************  E G R E S S   P R O C E S S I N G   *******************
  *************************************************************************/
-control MyEgress(
-    inout my_headers_t        hdr,
-    inout my_metadata_t       meta,
-    inout standard_metadata_t standard_metadata) {
-    apply {   }
+control MyEgress(inout headers hdr,
+                 inout metadata meta,
+                 inout standard_metadata_t standard_metadata) {
+    apply { }
 }
 
 /*************************************************************************
  *************   C H E C K S U M    C O M P U T A T I O N   **************
  *************************************************************************/
 
-control MyComputeChecksum(inout headers  hdr, inout metadata meta) {
-    apply {  }
+control MyComputeChecksum(inout headers hdr, inout metadata meta) {
+    apply { }
 }
 
 /*************************************************************************
  ***********************  D E P A R S E R  *******************************
  *************************************************************************/
-control MyDeparser(
-    packet_out      packet,
-    in my_headers_t hdr)
-{
+control MyDeparser(packet_out packet, in headers hdr) {
     apply {
         packet.emit(hdr.ethernet);
         packet.emit(hdr.p4calc);
     }
 }
 
+/*************************************************************************
+ ***********************  S W I T T C H **********************************
+ *************************************************************************/
+
 V1Switch(
-    MyParser(),
-    MyVerifyChecksum(),
-    MyIngress(),
-    MyEgress(),
-    MyComputeChecksum(),
-    MyDeparser()
+MyParser(),
+MyVerifyChecksum(),
+MyIngress(),
+MyEgress(),
+MyComputeChecksum(),
+MyDeparser()
 ) main;

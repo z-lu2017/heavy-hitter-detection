@@ -79,10 +79,11 @@ struct headers {
 *********************** P A R S E R  ***********************************
 *************************************************************************/
 
-parser ParserImpl(packet_in packet,
-                  out headers hdr,
-                  inout metadata meta,
-                  inout standard_metadata_t standard_metadata) {
+parser MyParser(packet_in packet,
+                out headers hdr,
+                inout metadata meta,
+                inout standard_metadata_t standard_metadata) {
+
     state start {
         transition parse_ethernet;
     }
@@ -129,7 +130,7 @@ parser ParserImpl(packet_in packet,
 ************   C H E C K S U M    V E R I F I C A T I O N   *************
 *************************************************************************/
 
-control verifyChecksum(in headers hdr, inout metadata meta) {   
+control MyVerifyChecksum(in headers hdr, inout metadata meta) {   
     apply {  }
 }
 
@@ -138,7 +139,10 @@ control verifyChecksum(in headers hdr, inout metadata meta) {
 **************  I N G R E S S   P R O C E S S I N G   *******************
 *************************************************************************/
 
-control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
+control MyIngress(inout headers hdr,
+                  inout metadata meta,
+                  inout standard_metadata_t standard_metadata) {
+
     /* 
      * At destination ToR, saves the queue depth of the best path from
      * each source ToR
@@ -182,14 +186,14 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
 
     /* 
      * Runs if it is the destination ToR.
-     * Control plane Gives the index of register for best path from a source ToR
+     * Control plane Gives the index of register for best path from source ToR
      */
     action hula_dst(bit<32> index) {
         meta.index = index;
     }
 
     /* 
-     * In reverse path, update nexthop to a destination ToR to the ingress port
+     * In reverse path, update nexthop to a destination ToR to ingress port
      * where we receive hula packet
      */
     action hula_set_nhop(bit<32> index) {
@@ -377,7 +381,9 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
 ****************  E G R E S S   P R O C E S S I N G   *******************
 *************************************************************************/
 
-control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
+control MyEgress(inout headers hdr,
+                 inout metadata meta,
+                 inout standard_metadata_t standard_metadata) {
     apply {
         if (hdr.hula.isValid() && hdr.hula.dir == 0){
 
@@ -395,7 +401,7 @@ control egress(inout headers hdr, inout metadata meta, inout standard_metadata_t
 *************   C H E C K S U M    C O M P U T A T I O N   **************
 *************************************************************************/
 
-control computeChecksum(inout headers  hdr, inout metadata meta) {
+control MyComputeChecksum(inout headers hdr, inout metadata meta) {
      apply {
 	update_checksum(
 	    hdr.ipv4.isValid(),
@@ -419,7 +425,7 @@ control computeChecksum(inout headers  hdr, inout metadata meta) {
 ***********************  D E P A R S E R  *******************************
 *************************************************************************/
 
-control DeparserImpl(packet_out packet, in headers hdr) {
+control MyDeparser(packet_out packet, in headers hdr) {
     apply {
         packet.emit(hdr.ethernet);
         packet.emit(hdr.hula);
@@ -434,10 +440,10 @@ control DeparserImpl(packet_out packet, in headers hdr) {
 *************************************************************************/
 
 V1Switch(
-ParserImpl(),
-verifyChecksum(),
-ingress(),
-egress(),
-computeChecksum(),
-DeparserImpl()
+MyParser(),
+MyVerifyChecksum(),
+MyIngress(),
+MyEgress(),
+MyComputeChecksum(),
+MyDeparser()
 ) main;

@@ -27,7 +27,7 @@ The directory with this README also contains a skeleton P4 program,
 `basic.p4`, which initially drops all packets. Your job will be to
 extend this skeleton program to properly forward IPv4 packets.
 
-Before that, let's compile the incomplete `ip4v_forward.p4` and bring
+Before that, let's compile the incomplete `basic.p4` and bring
 up a switch in Mininet to test its behavior.
 
 1. In your shell, run:
@@ -35,7 +35,7 @@ up a switch in Mininet to test its behavior.
    ./run.sh
    ```
    This will:
-   * compile `ip4v_forward.p4`, and  
+   * compile `basic.p4`, and
    * start a Mininet instance with three switches (`s1`, `s2`, `s3`)
      configured in a triangle, each connected to one host (`h1`, `h2`,
      and `h3`).
@@ -59,7 +59,7 @@ server. In `h2`'s xterm, start the server:
 5. Type `exit` to leave each xterm and the Mininet command line.
 
 The message was not received because each switch is programmed
-according to `ip4v_forward.p4`, which drops all packets on arrival.
+according to `basic.p4`, which drops all packets on arrival.
 Your job is to extend this file so it forwards packets.
 
 ### A note about the control plane
@@ -93,17 +93,17 @@ A complete `basic.p4` will contain the following components:
 1. Header type definitions for Ethernet (`ethernet_t`) and IPv4 (`ipv4_t`).
 2. **TODO:** Parsers for Ethernet and IPv4 that populate `ethernet_t` and `ipv4_t` fields.
 3. An action to drop a packet, using `mark_to_drop()`.
-4. **TODO:** An action (called `basic`) that:
+4. **TODO:** An action (called `ipv4_forward`) that:
 	1. Sets the egress port for the next hop. 
 	2. Updates the ethernet destination address with the address of the next hop. 
 	3. Updates the ethernet source address with the address of the switch. 
 	4. Decrements the TTL.
 5. **TODO:** A control that:
     1. Defines a table that will read an IPv4 destination address, and
-       invoke either `drop` or `basic`.
+       invoke either `drop` or `ipv4_forward`.
     2. An `apply` block that applies the table.   
-6. A deparser that selects the order in which fields inserted into the outgoing
-   packet.
+6. **TODO:** A deparser that selects the order
+    in which fields inserted into the outgoing packet.
 7. A `package` instantiation supplied with the parser, control, and deparser.
     > In general, a package also requires instances of checksum verification
     > and recomputation controls. These are not necessary for this tutorial
@@ -160,4 +160,4 @@ mn -c
 ## Next Steps
 
 Congratulations, your implementation works!  Move on to the next
-exercise: implementing the scrambler!
+exercise: implementing the [scrambler](../scrambler)!
