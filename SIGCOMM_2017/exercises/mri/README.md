@@ -104,7 +104,7 @@ missing piece.
 MRI will require two custom headers. The first header, `mri_t`,
 contains a single field `count`, which indicates the number of switch
 IDs that follow. The second header, `switch_t`, contains switch ID and
-Queue depth fields.
+Queue depth fields of each switch hop the packet goes through.
 
 One of the biggest challenges in implementing MRI is handling the
 recursive logic for parsing these two headers. We will use a
