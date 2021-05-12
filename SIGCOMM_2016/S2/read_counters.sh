@@ -18,7 +18,7 @@ THIS_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 source $THIS_DIR/../../env.sh
 
-CLI_PATH=$BMV2_PATH/targets/simple_switch/sswitch_CLI
+CLI_PATH=/home/zzz/behavioral-model/targets/simple_switch/sswitch_CLI
 
 echo "displaying counters for h1"
 echo "counter_read ip_src_counter 0" | $CLI_PATH heavy_hitter.json 22222

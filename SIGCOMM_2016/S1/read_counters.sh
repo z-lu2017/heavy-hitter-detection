@@ -18,16 +18,19 @@ THIS_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 source $THIS_DIR/../../env.sh
 
-P4C_BM_SCRIPT=$P4C_BM_PATH/p4c_bm/__main__.py
+CLI_PATH=/home/zzz/behavioral-model/targets/simple_switch/sswitch_CLI
 
-SWITCH_PATH=$BMV2_PATH/targets/simple_switch/simple_switch
+echo "displaying counters for h1"
+echo "counter_read ip_src_counter 0" | $CLI_PATH heavy_hitter.json 22222
+echo
+echo "displaying counters for h2"
+echo "counter_read ip_src_counter 1" | $CLI_PATH heavy_hitter.json 22222
+echo
+echo "displaying counters for h3"
+echo "counter_read ip_src_counter 2" | $CLI_PATH heavy_hitter.json 22222
+echo
+echo "resetting counters"
+echo "counter_reset ip_src_counter" | $CLI_PATH heavy_hitter.json 22222
+echo
 
-CLI_PATH=$BMV2_PATH/tools/runtime_CLI.py
 
-$P4C_BM_SCRIPT p4src/heavy_hitter.p4 --json heavy_hitter.json
-# This gives libtool the opportunity to "warm-up"
-sudo $SWITCH_PATH >/dev/null 2>&1
-sudo PYTHONPATH=$PYTHONPATH:$BMV2_PATH/mininet/ python topo.py \
-    --behavioral-exe $SWITCH_PATH \
-    --json heavy_hitter.json \
-    --cli $CLI_PATH

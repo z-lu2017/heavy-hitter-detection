@@ -111,7 +111,7 @@ def main():
         with open("commands.txt", "r") as f:
             print " ".join(cmd)
             try:
-                output = subprocess.check_output(cmd, stdin = f)
+                output = subprocess.check_output(cmd, shell=True, stdin = f)
                 print output
             except subprocess.CalledProcessError as e:
                 print e

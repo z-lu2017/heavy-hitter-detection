@@ -1,0 +1,17 @@
+table_set_default send_frame _drop
+table_set_default forward _drop
+table_set_default ipv4_lpm _drop
+table_set_default set_heavy_hitter_count_table set_heavy_hitter_count
+table_set_default set_heavy_hitter_table set_heavy_hitter
+table_add send_frame rewrite_mac 1 => 00:00:00:00:00:01
+table_add send_frame rewrite_mac 2 => 00:00:00:00:00:02
+table_add send_frame rewrite_mac 3 => 00:00:00:00:00:03
+table_add forward set_dmac 10.0.0.1 => 00:00:00:00:00:01
+table_add forward set_dmac 10.0.0.2 => 00:00:00:00:00:02
+table_add forward set_dmac 10.0.0.3 => 00:00:00:00:00:03
+table_add m_table m_action 00:00:00:00:00:02 => 2
+table_set_default m_filter _drop
+table_add m_filter _noaction 0 =>
+meter_set_rates heavy_hitter_1 2 0.001:1 0.005:1
+
+

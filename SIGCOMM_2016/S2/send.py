@@ -1,19 +1,14 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+import argparse
+import sys
+import socket
+import random
+import struct
+import string
 
-# Copyright 2013-present Barefoot Networks, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
+from scapy.all import sendp, send, get_if_list, get_if_hwaddr
+from scapy.all import Packet
+from scapy.all import Ether, IP, UDP, TCP
 from scapy.all import Ether, IP, sendp, get_if_hwaddr, get_if_list, TCP, Raw
 import sys
 import random, string
@@ -39,10 +34,23 @@ def read_topo():
             links.append( (a, b) )
     return int(nb_hosts), int(nb_switches), links
 
+def get_if():
+    ifs=get_if_list()
+    iface=None # "h1-eth0"
+    for i in get_if_list():
+        if "eth0" in i:
+            iface=i
+            break;
+    if not iface:
+        print "Cannot find eth0 interface"
+        exit(1)
+    return iface
+
 def send_random_traffic(dst):
     dst_mac = None
     dst_ip = None
-    src_mac = [get_if_hwaddr(i) for i in get_if_list() if i == 'eth0']
+    iface = get_if()
+    src_mac = [get_if_hwaddr(i) for i in get_if_list() if i == iface]
     if len(src_mac) < 1:
         print ("No interface for output")
         sys.exit(1)
@@ -74,20 +82,25 @@ def send_random_traffic(dst):
     total_pkts = 0
     random_ports = random.sample(xrange(1024, 65535), 10)
     for port in random_ports:
-        num_packets = random.randint(50, 250)
+        num_packets = random.randint(10, 50)
         for i in range(num_packets):
-            data = randomword(100)
+            data = randomword(10)
             p = Ether(dst=dst_mac,src=src_mac)/IP(dst=dst_ip,src=src_ip)
             p = p/TCP(dport=port)/Raw(load=data)
             print p.show()
-            sendp(p, iface = "eth0")
+            sendp(p, iface = "h1-eth0")
             total_pkts += 1
     print "Sent %s packets in total" % total_pkts
 
+def main():
+
+    if len(sys.argv)<2:
+        print 'pass 1 arguments: <destination>'
+        exit(1)
+
+    dst_name = sys.argv[1]
+    send_random_traffic(dst_name)
+
+
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print("Usage: python send.py dst_host_name")
-        sys.exit(1)
-    else:
-        dst_name = sys.argv[1]
-        send_random_traffic(dst_name)
+    main()
